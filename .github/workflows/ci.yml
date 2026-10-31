@@ -1,0 +1,42 @@
+name: AuthKit CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: authkit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-and-test:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure read-only design package access
+        env:
+          DESIGNTOKENSKIT_DEPLOY_KEY: ${{ secrets.DESIGNTOKENSKIT_DEPLOY_KEY }}
+          UICOMPONENTSKIT_DEPLOY_KEY: ${{ secrets.UICOMPONENTSKIT_DEPLOY_KEY }}
+        run: bash Scripts/configure-private-dependencies.sh
+      - name: Select Xcode
+        run: echo 'DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer' >> "$GITHUB_ENV"
+      - name: Unit tests
+        run: swift test --enable-code-coverage > "$RUNNER_TEMP/authkit-tests.log" 2>&1
+      - name: Build iOS library and UI
+        run: >-
+          xcodebuild -scheme AuthKitUI -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -scmProvider system
+          CODE_SIGNING_ALLOWED=NO build
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authkit-validation
+          path: ${{ runner.temp }}/authkit-tests.log
+      - name: Remove credentials
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/shared-kit-credentials"
