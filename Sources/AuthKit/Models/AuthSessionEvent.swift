@@ -2,6 +2,9 @@ import Foundation
 
 public enum AuthProvider: String, CaseIterable, Sendable {
     case google, github, apple
+    public var displayName: String {
+        switch self { case .google: "Google"; case .github: "GitHub"; case .apple: "Apple" }
+    }
 }
 
 public struct AuthSessionEvent: Sendable {

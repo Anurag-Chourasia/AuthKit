@@ -101,3 +101,16 @@ CI runs offline tests and builds iOS UI. Separate read-only deploy keys provide
 private design-package access. No coverage-percentage or live-provider acceptance
 claim is made. AuthKit supplies reusable screens; host app navigation/persistence
 migration and live Supabase/provider configuration remain host integration work.
+
+## Offline UI demo
+
+Open `Examples/AuthKitDemo/AuthKitDemo.xcodeproj` and run AuthKitDemo. Switch between
+all three brands, open signup and forgot-password screens, and exercise form validation.
+This demo uses an isolated fake backend; it does not create cloud accounts or contact
+OAuth providers. Provider taps intentionally return an unsupported-URL error.
+The layout-only rendering tests produce image attachments, but ImageRenderer replaces
+UIKit text fields with placeholders; inspect actual controls in this demo.
+
+Provider references: [Supabase Swift OAuth](https://supabase.com/docs/reference/swift/auth-signinwithoauth),
+[auth events](https://supabase.com/docs/reference/swift/auth-onauthstatechange),
+[password recovery](https://supabase.com/docs/guides/auth/passwords).

@@ -3,7 +3,7 @@ import UIKit
 import SwiftUI
 import XCTest
 import AuthKit
-import AuthKitUI
+@testable import AuthKitUI
 
 private actor PreviewBackend: AuthBackend {
     func currentUser() async throws -> AuthUser? { nil }
@@ -20,22 +20,23 @@ private actor PreviewBackend: AuthBackend {
 
 @MainActor
 final class AuthViewRenderingTests: XCTestCase {
-    func testAllBrandsRenderAtAccessibilitySize() throws {
+    func testAllBrandLayoutsRenderAtAccessibilitySize() async throws {
         let callback = try XCTUnwrap(URL(string: "preview-auth://auth/callback"))
         for brand in AuthBrand.allCases {
             let session = SessionManager(authService: AuthService(backend: PreviewBackend()))
-            let controller = UIHostingController(rootView: AuthView(session: session, brand: brand,
-                redirectTo: callback, providers: AuthProvider.allCases)
-                .environment(\.sizeCategory, .accessibilityExtraExtraExtraLarge))
-            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 414, height: 896))
-            window.rootViewController = controller
-            window.makeKeyAndVisible()
-            controller.view.frame = window.bounds
-            controller.view.layoutIfNeeded()
-            let image = UIGraphicsImageRenderer(size: window.bounds.size).image { _ in
-                controller.view.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
-            }
-            XCTAssertNotNil(image.cgImage)
+            let view = AuthView(session: session, brand: brand,
+                redirectTo: callback, providers: AuthProvider.allCases).formContent
+                .environment(\.sizeCategory, .accessibilityExtraExtraExtraLarge)
+                .frame(width: 414)
+                .background(Color.white)
+            // Layout-only evidence: ImageRenderer substitutes placeholders for UIKit text inputs.
+            // Use Examples/AuthKitDemo to inspect and interact with the actual fields.
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.uiImage)
+            let cgImage = try XCTUnwrap(image.cgImage)
+            let pixels = try XCTUnwrap(cgImage.dataProvider?.data) as Data
+            XCTAssertGreaterThan(Set(pixels).count, 8, "A blank image must not pass UI validation")
             let attachment = XCTAttachment(image: image)
             attachment.name = brand.rawValue + "-accessibility"
             attachment.lifetime = .keepAlways
@@ -43,8 +44,6 @@ final class AuthViewRenderingTests: XCTestCase {
             if ProcessInfo.processInfo.environment["CI"] == nil {
                 try image.pngData()?.write(to: URL(fileURLWithPath: "/tmp/authkit-\(brand.rawValue).png"))
             }
-            window.isHidden = true
-            window.rootViewController = nil
         }
     }
 }

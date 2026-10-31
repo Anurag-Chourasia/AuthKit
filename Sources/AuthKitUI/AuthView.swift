@@ -43,7 +43,14 @@ public struct AuthView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        ScrollView { formContent }
+            .tint(brand.tint)
+            .onChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
+            .onDisappear { password = ""; confirmation = "" }
+    }
+
+    // Renderable content is separate from the platform-backed scrolling container.
+    var formContent: some View {
             VStack(spacing: Spacing.twenty) {
                 Image(systemName: brand.symbol).font(.largeTitle).accessibilityHidden(true)
                 Text(brand.title).font(.largeTitle.bold())
@@ -85,7 +92,7 @@ public struct AuthView: View {
                     if mode == .login {
                         Button("Forgot password?") { changeMode(.forgot) }
                         ForEach(providers, id: \.self) { provider in
-                            Button("Continue with \(provider.rawValue.capitalized)") {
+                            Button("Continue with \(provider.displayName)") {
                                 password = ""; confirmation = ""
                                 Task { await session.signIn(provider: provider, redirectTo: redirectTo) }
                             }
@@ -101,10 +108,7 @@ public struct AuthView: View {
             .padding(Spacing.twenty)
             .frame(maxWidth: 520)
             .frame(maxWidth: .infinity)
-        }
-        .tint(brand.tint)
-        .onChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
-        .onDisappear { password = ""; confirmation = "" }
+            .tint(brand.tint)
     }
 
     private var canSubmit: Bool {
