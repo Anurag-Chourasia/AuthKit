@@ -32,6 +32,7 @@ public struct AuthView: View {
     private let palette: AuthPalette
     private let redirectTo: URL
     private let providers: [AuthProvider]
+    private let initialScreen: AuthScreen
     @State private var mode: Mode = .login
     @State private var email = ""
     @State private var password = ""
@@ -43,6 +44,7 @@ public struct AuthView: View {
                 initialScreen: AuthScreen = .login, initialEmail: String = "") {
         self.palette = palette ?? .appAssets(fallback: .projectDefault(for: brand))
         self.session = session; self.brand = brand; self.redirectTo = redirectTo; self.providers = providers
+        self.initialScreen = initialScreen
         _mode = State(initialValue: initialScreen == .passwordReset ? .forgot : .login)
         _email = State(initialValue: initialEmail)
     }
@@ -110,7 +112,7 @@ public struct AuthView: View {
                     }
                     .textFieldStyle(.roundedBorder)
                 }
-                if !session.isPasswordRecovery {
+                if !session.isPasswordRecovery && initialScreen == .login {
                     if mode == .login {
                         Button("Forgot password?") { changeMode(.forgot) }
                             .accessibilityIdentifier("auth.forgotPassword")
