@@ -10,12 +10,12 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/supabase/supabase-swift.git", exact: "2.55.6"),
-        .package(url: "https://github.com/Anurag-Chourasia/UIComponentsKit.git", exact: "1.2.0"),
-        .package(url: "https://github.com/Anurag-Chourasia/DesignTokensKit.git", exact: "1.2.0")
+        .package(url: "https://github.com/Anurag-Chourasia/UIComponentsKit.git", exact: "1.3.0"),
+        .package(url: "https://github.com/Anurag-Chourasia/DesignTokensKit.git", exact: "1.3.0")
     ],
     targets: [
         .target(name: "AuthKit", dependencies: [.product(name: "Supabase", package: "supabase-swift")]),
-        .target(name: "AuthKitUI", dependencies: ["AuthKit", "UIComponentsKit", "DesignTokensKit"]),
+        .target(name: "AuthKitUI", dependencies: ["AuthKit", "UIComponentsKit", "DesignTokensKit"], resources: [.process("Resources")]),
         .testTarget(name: "AuthKitTests", dependencies: ["AuthKit"]),
         .testTarget(name: "AuthKitUITests", dependencies: ["AuthKitUI", "AuthKit"])
     ]

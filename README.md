@@ -114,3 +114,47 @@ UIKit text fields with placeholders; inspect actual controls in this demo.
 Provider references: [Supabase Swift OAuth](https://supabase.com/docs/reference/swift/auth-signinwithoauth),
 [auth events](https://supabase.com/docs/reference/swift/auth-onauthstatechange),
 [password recovery](https://supabase.com/docs/guides/auth/passwords).
+
+## App brand palettes
+
+Brand cores: MyTV electric blue #2563EB; ShowBook deep navy #00064F; Motivation Daily
+warm amber #B45309. Host catalogs own AuthAction, AuthOnAction, AuthBackground and
+AuthForeground, each with light/dark variants. AuthView automatically passes these
+assets through AuthPalette; missing host assets fall back to bundled brand defaults.
+Provider marks retain their own colors for recognition.
+
+DesignTokensKit owns spacing, typography, geometry and semantic role definitions.
+UIComponentsKit owns reusable controls and their interaction/accessibility behaviour.
+AuthKitUI owns authentication composition. Product-specific brand hex values belong
+in each host's catalog rather than being built into shared token/component APIs.
+
+Define a palette in each host app as branding evolves, then pass it to the auth view:
+
+```swift
+let palette = AuthPalette(action: Color("AccentColor"), onAction: .white,
+                          background: Color("AuthBackground"), foreground: .primary)
+AuthView(session: session, brand: .showBook, redirectTo: callback,
+         providers: [.google, .github, .apple], palette: palette)
+```
+
+Use color assets with light/dark variants. Choose onAction for contrast against your
+chosen action color; it is independent of foreground text and provider-button colors.
+
+## Host app gate (0.2.0)
+
+AppAuthGate wraps each host's existing content and observes auth events at the root.
+It presents recovery before authenticated content and provides Account / local sign-out.
+Configuration is read from SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, AUTH_CALLBACK_URL
+and AUTH_PROVIDERS in the host Info.plist. AUTH_PROVIDERS is a comma-separated list
+of enabled providers; leave empty until those providers are configured in Supabase.
+Missing configuration fails closed. Callback handling matches scheme, host and path.
+
+The three hosts register these callbacks, which must also be allowlisted in Supabase:
+- mytv-auth://auth/callback
+- showbook-auth://auth/callback
+- motivationdaily-auth://auth/callback
+
+Each app stores its session under its bundle identifier plus `.supabase.session`.
+ShowBook binds cloud identity before loading bookmarks; legacy local account passwords
+are not migrated or used to authenticate Supabase. MyTV and Motivation Daily favourites
+remain local device data; this integration does not add cloud sync or per-account data migration.

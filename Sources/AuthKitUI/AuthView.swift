@@ -20,15 +20,14 @@ public enum AuthBrand: String, CaseIterable, Sendable {
         case .motivationDaily: "A little inspiration, every day."
         }
     }
-    var tint: Color {
-        switch self { case .myTV: .blue; case .showBook: .indigo; case .motivationDaily: .orange }
-    }
+
 }
 
 @MainActor
 public struct AuthView: View {
     @ObservedObject private var session: SessionManager
     private let brand: AuthBrand
+    private let palette: AuthPalette
     private let redirectTo: URL
     private let providers: [AuthProvider]
     @State private var mode: Mode = .login
@@ -38,13 +37,16 @@ public struct AuthView: View {
     private enum Mode: String { case login = "Sign in", signup = "Create account", forgot = "Reset password" }
 
     public init(session: SessionManager, brand: AuthBrand, redirectTo: URL,
-                providers: [AuthProvider] = []) {
+                providers: [AuthProvider] = [], palette: AuthPalette? = nil) {
+        self.palette = palette ?? .appAssets(fallback: .projectDefault(for: brand))
         self.session = session; self.brand = brand; self.redirectTo = redirectTo; self.providers = providers
     }
 
     public var body: some View {
         ScrollView { formContent }
-            .tint(brand.tint)
+            .foregroundStyle(palette.foreground)
+            .background(palette.background)
+            .tint(palette.action)
             .onChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
             .onDisappear { password = ""; confirmation = "" }
     }
@@ -78,10 +80,18 @@ public struct AuthView: View {
                         }
                         if let error = session.errorMessage { Text(error).foregroundStyle(.red).accessibilityIdentifier("auth.error") }
                         if let notice = session.notice { Text(notice).accessibilityIdentifier("auth.notice") }
-                        Button(session.isPasswordRecovery ? "Update password" : mode.rawValue) {
+                        Button {
                             Task { await submit() }
+                        } label: {
+                            Text(session.isPasswordRecovery ? "Update password" : mode.rawValue)
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 52)
+                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(palette.onAction)
+                        .background(palette.action, in: RoundedRectangle(cornerRadius: CornerRadius.twelve))
+                        .opacity(!canSubmit || session.isLoading ? 0.4 : 1)
                         .disabled(!canSubmit || session.isLoading)
                         .accessibilityIdentifier("auth.submit")
                         if session.isLoading { ProgressView("Please wait") }
@@ -91,12 +101,23 @@ public struct AuthView: View {
                 if !session.isPasswordRecovery {
                     if mode == .login {
                         Button("Forgot password?") { changeMode(.forgot) }
-                        ForEach(providers, id: \.self) { provider in
-                            Button("Continue with \(provider.displayName)") {
-                                password = ""; confirmation = ""
-                                Task { await session.signIn(provider: provider, redirectTo: redirectTo) }
+                        if !providers.isEmpty {
+                            HStack(spacing: Spacing.twelve) {
+                                Rectangle().frame(height: StrokeWidth.one)
+                                Text("or continue with").font(.caption).fixedSize()
+                                Rectangle().frame(height: StrokeWidth.one)
                             }
-                            .buttonStyle(.bordered).disabled(session.isLoading)
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                            VStack(spacing: Spacing.twelve) {
+                                ForEach(providers, id: \.self) { provider in
+                                    ProviderSignInButton(provider: provider, isLoading: session.isLoading) {
+                                        password = ""; confirmation = ""
+                                        Task { await session.signIn(provider: provider, redirectTo: redirectTo) }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, Spacing.sixteen)
                         }
                     }
                     Button(mode == .login ? "Create an account" : "Back to sign in") {
@@ -108,7 +129,7 @@ public struct AuthView: View {
             .padding(Spacing.twenty)
             .frame(maxWidth: 520)
             .frame(maxWidth: .infinity)
-            .tint(brand.tint)
+            .tint(palette.action)
     }
 
     private var canSubmit: Bool {
@@ -134,3 +155,38 @@ public struct AuthView: View {
         }
     }
 }
+
+#if DEBUG
+/// Preview-only backend keeps the canvas independent of Supabase credentials,
+/// Keychain entitlements, network access and the example app target.
+private actor AuthPreviewBackend: AuthBackend {
+    func currentUser() async throws -> AuthUser? { nil }
+    func events() async -> AsyncStream<AuthSessionEvent> {
+        AsyncStream { $0.yield(.init(user: nil)); $0.finish() }
+    }
+    func signIn(email: String, password: String) async throws -> AuthUser { .init(id: UUID(), email: email) }
+    func signUp(email: String, password: String) async throws -> Bool { true }
+    func signOut() async throws { }
+    func refreshSession() async throws { }
+    func requestPasswordReset(email: String, redirectTo: URL) async throws { }
+    func updatePassword(_ password: String) async throws { }
+    func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser { throw URLError(.unsupportedURL) }
+    func handleCallback(_ url: URL) async throws -> AuthUser { throw URLError(.unsupportedURL) }
+}
+
+@MainActor
+private struct AuthPreview: View {
+    let brand: AuthBrand
+    @StateObject private var session = SessionManager(
+        authService: AuthService(backend: AuthPreviewBackend()))
+    var body: some View {
+        AuthView(session: session, brand: brand,
+                 redirectTo: URL(string: "authkit-preview://auth/callback")!,
+                 providers: AuthProvider.allCases)
+    }
+}
+
+#Preview("ShowBook") { AuthPreview(brand: .showBook) }
+#Preview("MyTV") { AuthPreview(brand: .myTV) }
+#Preview("Motivation Daily") { AuthPreview(brand: .motivationDaily) }
+#endif

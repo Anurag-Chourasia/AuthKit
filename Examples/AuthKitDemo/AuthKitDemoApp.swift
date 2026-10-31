@@ -34,3 +34,12 @@ struct AuthKitDemoApp: App {
         }
     }
 }
+
+#Preview {
+    AuthView(
+        session: SessionManager(authService: AuthService(backend: DemoBackend())),
+        brand: .showBook,
+        redirectTo: URL(string: "authkit-demo://auth/callback")!,
+        providers: AuthProvider.allCases
+    )
+}
