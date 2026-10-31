@@ -16,6 +16,7 @@ let package = Package(
     targets: [
         .target(name: "AuthKit", dependencies: [.product(name: "Supabase", package: "supabase-swift")]),
         .target(name: "AuthKitUI", dependencies: ["AuthKit", "UIComponentsKit", "DesignTokensKit"]),
-        .testTarget(name: "AuthKitTests", dependencies: ["AuthKit"])
+        .testTarget(name: "AuthKitTests", dependencies: ["AuthKit"]),
+        .testTarget(name: "AuthKitUITests", dependencies: ["AuthKitUI", "AuthKit"])
     ]
 )

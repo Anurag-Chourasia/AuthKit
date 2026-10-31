@@ -31,12 +31,18 @@ jobs:
           xcodebuild -scheme AuthKitUI -destination 'generic/platform=iOS Simulator'
           -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -scmProvider system
           CODE_SIGNING_ALLOWED=NO build
+      - name: Test iOS package and render branded screens
+        run: |
+          device_id=$(xcrun simctl create "AuthKit CI" com.apple.CoreSimulator.SimDeviceType.iPhone-11 com.apple.CoreSimulator.SimRuntime.iOS-27-0)
+          xcodebuild -scheme AuthKit-Package -destination "platform=iOS Simulator,id=$device_id" -parallel-testing-enabled NO -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -resultBundlePath "$RUNNER_TEMP/AuthKitResults.xcresult" -scmProvider system CODE_SIGNING_ALLOWED=NO test
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: authkit-validation
-          path: ${{ runner.temp }}/authkit-tests.log
+          path: |
+            ${{ runner.temp }}/authkit-tests.log
+            ${{ runner.temp }}/AuthKitResults.xcresult
       - name: Remove credentials
         if: always()
         run: rm -rf "$RUNNER_TEMP/shared-kit-credentials"
