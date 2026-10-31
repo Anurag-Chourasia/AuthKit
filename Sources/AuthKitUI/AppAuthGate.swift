@@ -102,11 +102,20 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                     .frame(maxWidth: .infinity, minHeight: 44)
                             }
                             .background(.regularMaterial)
+                            .accessibilityIdentifier("auth.account")
                         }
                         .sheet(isPresented: $accountPresented) {
                             NavigationStack {
                                 Form {
                                     Text(user.email ?? "Signed in")
+                                        .accessibilityIdentifier("auth.accountEmail")
+                                    NavigationLink("Reset password") {
+                                        AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
+                                                 initialScreen: .passwordReset, initialEmail: user.email ?? "")
+                                            .navigationTitle("Reset password")
+                                    }
+                                    .accessibilityIdentifier("auth.accountResetPassword")
+                                    .disabled(session.isLoading)
                                     if let error = session.errorMessage { Text(error).foregroundStyle(.red) }
                                     Button("Sign out", role: .destructive) {
                                         Task {
@@ -114,6 +123,7 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                             if session.state == .unauthenticated { accountPresented = false }
                                         }
                                     }.disabled(session.isLoading)
+                                    .accessibilityIdentifier("auth.signOut")
                                 }
                                 .navigationTitle("Account")
                                 .toolbar { Button("Done") { accountPresented = false } }
@@ -125,6 +135,9 @@ private struct ConfiguredAuthGate<Content: View>: View {
         .task { await session.observeAuthChanges() }
         .onChange(of: session.state) { state in
             if state == .unauthenticated { accountPresented = false; onSignedOut() }
+        }
+        .onChange(of: session.isPasswordRecovery) { recovering in
+            if recovering { accountPresented = false }
         }
         .onOpenURL { url in
             guard configuration.accepts(url) else { return }

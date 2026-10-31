@@ -23,6 +23,8 @@ public enum AuthBrand: String, CaseIterable, Sendable {
 
 }
 
+public enum AuthScreen: Sendable { case login, passwordReset }
+
 @MainActor
 public struct AuthView: View {
     @ObservedObject private var session: SessionManager
@@ -37,9 +39,12 @@ public struct AuthView: View {
     private enum Mode: String { case login = "Sign in", signup = "Create account", forgot = "Reset password" }
 
     public init(session: SessionManager, brand: AuthBrand, redirectTo: URL,
-                providers: [AuthProvider] = [], palette: AuthPalette? = nil) {
+                providers: [AuthProvider] = [], palette: AuthPalette? = nil,
+                initialScreen: AuthScreen = .login, initialEmail: String = "") {
         self.palette = palette ?? .appAssets(fallback: .projectDefault(for: brand))
         self.session = session; self.brand = brand; self.redirectTo = redirectTo; self.providers = providers
+        _mode = State(initialValue: initialScreen == .passwordReset ? .forgot : .login)
+        _email = State(initialValue: initialEmail)
     }
 
     public var body: some View {
@@ -61,6 +66,10 @@ public struct AuthView: View {
                     VStack(alignment: .leading, spacing: Spacing.sixteen) {
                         Text(session.isPasswordRecovery ? "Choose a new password" : mode.rawValue).font(.title2.bold())
                         if !session.isPasswordRecovery {
+                            if mode == .forgot {
+                                Text("We’ll email you a link to choose a new password. Open it on this device.")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                            }
                             TextField("Email", text: $email)
                                 .textContentType(.emailAddress)
                                 .autocorrectionDisabled()
@@ -76,6 +85,9 @@ public struct AuthView: View {
                                 .accessibilityIdentifier("auth.password")
                             if mode == .signup || session.isPasswordRecovery {
                                 SecureField("Confirm password", text: $confirmation).textContentType(.newPassword)
+                                    .accessibilityIdentifier("auth.confirmPassword")
+                                Text("Use at least 8 characters. Passwords must match.")
+                                    .font(.caption).foregroundStyle(.secondary)
                             }
                         }
                         if let error = session.errorMessage { Text(error).foregroundStyle(.red).accessibilityIdentifier("auth.error") }
@@ -83,7 +95,7 @@ public struct AuthView: View {
                         Button {
                             Task { await submit() }
                         } label: {
-                            Text(session.isPasswordRecovery ? "Update password" : mode.rawValue)
+                            Text(session.isPasswordRecovery ? "Update password" : mode == .forgot ? "Send reset link" : mode.rawValue)
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, minHeight: 52)
                                 .contentShape(Rectangle())
@@ -101,6 +113,8 @@ public struct AuthView: View {
                 if !session.isPasswordRecovery {
                     if mode == .login {
                         Button("Forgot password?") { changeMode(.forgot) }
+                            .accessibilityIdentifier("auth.forgotPassword")
+                            .disabled(session.isLoading)
                         if !providers.isEmpty {
                             HStack(spacing: Spacing.twelve) {
                                 Rectangle().frame(height: StrokeWidth.one)
@@ -124,6 +138,7 @@ public struct AuthView: View {
                         changeMode(mode == .login ? .signup : .login)
                     }
                     .disabled(session.isLoading)
+                    .accessibilityIdentifier("auth.switchMode")
                 }
             }
             .padding(Spacing.twenty)

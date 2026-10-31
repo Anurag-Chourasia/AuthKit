@@ -158,3 +158,14 @@ Each app stores its session under its bundle identifier plus `.supabase.session`
 ShowBook binds cloud identity before loading bookmarks; legacy local account passwords
 are not migrated or used to authenticate Supabase. MyTV and Motivation Daily favourites
 remain local device data; this integration does not add cloud sync or per-account data migration.
+
+## Account and password reset (0.2.1)
+
+All hosts receive login, signup, forgot-password, recovery-password entry and local
+logout through AppAuthGate. Signed-in users open Account > Reset password to send
+a recovery email to their prefilled address. Open that email link on the same device
+that requested it; the app retains the PKCE verifier in Keychain. Recovery dismisses
+the account sheet and takes priority over authenticated content.
+
+Use simulator signing for runtime authentication validation. Unsigned compile-only
+builds can fail Keychain storage and cannot establish OAuth/recovery readiness.
