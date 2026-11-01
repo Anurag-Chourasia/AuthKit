@@ -11,10 +11,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-and-test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Configure read-only design package access
@@ -24,20 +25,29 @@ jobs:
         run: bash Scripts/configure-private-dependencies.sh
       - name: Select Xcode
         run: echo 'DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer' >> "$GITHUB_ENV"
+      - name: Enforce pinned SwiftLint and dependencies
+        run: |
+          bash Scripts/install-swiftlint.sh "$RUNNER_TEMP/swiftlint"
+          SWIFTLINT_BIN="$RUNNER_TEMP/swiftlint/swiftlint" bash Scripts/lint.sh
+          python3 Scripts/verify_pins.py
       - name: Unit tests
-        run: swift test --enable-code-coverage > "$RUNNER_TEMP/authkit-tests.log" 2>&1
+        run: swift test --force-resolved-versions --enable-code-coverage > "$RUNNER_TEMP/authkit-tests.log" 2>&1
       - name: Build iOS library and UI
         run: >-
           xcodebuild -scheme AuthKitUI -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -scmProvider system
+          -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -onlyUsePackageVersionsFromResolvedFile -disableAutomaticPackageResolution -scmProvider system
           CODE_SIGNING_ALLOWED=NO build
       - name: Test iOS package and render branded screens
         run: |
           device_id=$(xcrun simctl create "AuthKit CI" com.apple.CoreSimulator.SimDeviceType.iPhone-11 com.apple.CoreSimulator.SimRuntime.iOS-27-0)
-          xcodebuild -scheme AuthKit-Package -destination "platform=iOS Simulator,id=$device_id" -parallel-testing-enabled NO -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -resultBundlePath "$RUNNER_TEMP/AuthKitResults.xcresult" -scmProvider system CODE_SIGNING_ALLOWED=NO test
+          xcodebuild -scheme AuthKit-Package -destination "platform=iOS Simulator,id=$device_id" -parallel-testing-enabled NO -derivedDataPath "$RUNNER_TEMP/AuthKitDerived" -resultBundlePath "$RUNNER_TEMP/AuthKitResults.xcresult" -onlyUsePackageVersionsFromResolvedFile -disableAutomaticPackageResolution -scmProvider system CODE_SIGNING_ALLOWED=NO test
+      - name: Verify dependency resolution preserved the reviewed lockfile
+        run: |
+          python3 Scripts/verify_pins.py
+          git diff --exit-code -- Package.resolved
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: authkit-validation
           path: |
@@ -45,4 +55,7 @@ jobs:
             ${{ runner.temp }}/AuthKitResults.xcresult
       - name: Remove credentials
         if: always()
-        run: rm -rf "$RUNNER_TEMP/shared-kit-credentials"
+        run: |
+          rm -rf "$RUNNER_TEMP/shared-kit-credentials"
+          echo "GIT_CONFIG_GLOBAL=/dev/null" >> "$GITHUB_ENV"
+          echo "GIT_SSH_COMMAND=ssh" >> "$GITHUB_ENV"

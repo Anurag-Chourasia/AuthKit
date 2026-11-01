@@ -1,0 +1,10 @@
+included:
+  - Sources
+  - Tests
+only_rules:
+  - duplicate_imports
+  - duplicate_conditions
+  - duplicate_enum_cases
+  - unused_setter_value
+  - force_cast
+strict: true
