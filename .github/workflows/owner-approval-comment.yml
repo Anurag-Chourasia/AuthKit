@@ -1,0 +1,42 @@
+name: Owner Approval Comment
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  post-owner-approval:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if reviewer is an owner and post comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owners = ['anurag-chourasia', 'anurag-chourasia-ios', 'sudeepa88'];
+            const reviewer = context.payload.review.user.login.toLowerCase();
+            const prAuthor = context.payload.pull_request.user.login.toLowerCase();
+            const reviewerDisplay = context.payload.review.user.login;
+
+            // GitHub already prevents self-approval, but guard anyway
+            if (reviewer === prAuthor) {
+              console.log('Reviewer is the PR author — skipping.');
+              return;
+            }
+
+            if (!owners.includes(reviewer)) {
+              console.log(`${reviewerDisplay} is not in the owners group — skipping.`);
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: `✅ **@${reviewerDisplay}** approved on behalf of **owners**`
+            });
