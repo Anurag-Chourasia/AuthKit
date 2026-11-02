@@ -43,7 +43,7 @@ jobs:
               console.log('Using default owners list due to error reading CODEOWNERS:', err.message);
             }
 
-            const ownersGroupDisplay = `**owners** (${ownersDisplayList.join(', ')})`;
+            const ownersGroupDisplay = 'the **owners** group';
 
             // --- Review Requested ---
             if (eventAction === 'review_requested') {
