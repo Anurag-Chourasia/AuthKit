@@ -29,6 +29,7 @@ private actor ControlledBackend: AuthBackend {
         AuthUser(id: UUID(), email: nil)
     }
     func handleCallback(_ url: URL) async throws -> AuthUser { AuthUser(id: UUID(), email: nil) }
+    func deleteAccount() async throws { calls += 1 }
 }
 
 @MainActor

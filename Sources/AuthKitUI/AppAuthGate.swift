@@ -77,6 +77,7 @@ private struct ConfiguredAuthGate<Content: View>: View {
     let content: (AuthUser, SessionManager) -> Content
     @StateObject private var session: SessionManager
     @State private var accountPresented = false
+    @State private var showingDeleteConfirmation = false
 
     init(brand: AuthBrand, configuration: AppAuthConfiguration,
          onSignedOut: @escaping () -> Void, content: @escaping (AuthUser, SessionManager) -> Content) {
@@ -124,9 +125,38 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                         }
                                     }.disabled(session.isLoading)
                                     .accessibilityIdentifier("auth.signOut")
+
+                                    Section {
+                                        Button("Delete account", role: .destructive) {
+                                            showingDeleteConfirmation = true
+                                        }
+                                        .disabled(session.isLoading)
+                                        .accessibilityIdentifier("auth.deleteAccount")
+                                    } footer: {
+                                        Text("Permanently deletes your account credentials and associated cloud records across this portfolio.")
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                                 .navigationTitle("Account")
                                 .toolbar { Button("Done") { accountPresented = false } }
+                                .confirmationDialog(
+                                    "Delete Account?",
+                                    isPresented: $showingDeleteConfirmation,
+                                    titleVisibility: .visible
+                                ) {
+                                    Button("Delete Account Permanently", role: .destructive) {
+                                        Task {
+                                            await session.deleteAccount()
+                                            if session.state == .unauthenticated {
+                                                accountPresented = false
+                                            }
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                } message: {
+                                    Text("This will permanently remove your cloud identity and records. You cannot undo this action.")
+                                }
                             }
                         }
                 }

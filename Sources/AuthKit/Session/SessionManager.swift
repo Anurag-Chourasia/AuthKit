@@ -99,6 +99,16 @@ public final class SessionManager: ObservableObject {
         }
     }
 
+    public func deleteAccount() async {
+        await perform {
+            let started = revision
+            try await authService.deleteAccount()
+            if revision == started { state = .unauthenticated }
+            isPasswordRecovery = false
+            notice = "Your account and associated cloud data have been deleted."
+        }
+    }
+
     public func signIn(provider: AuthProvider, redirectTo: URL) async {
         await perform {
             let started = revision

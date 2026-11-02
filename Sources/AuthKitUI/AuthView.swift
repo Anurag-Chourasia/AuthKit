@@ -189,6 +189,7 @@ private actor AuthPreviewBackend: AuthBackend {
     func updatePassword(_ password: String) async throws { }
     func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser { throw URLError(.unsupportedURL) }
     func handleCallback(_ url: URL) async throws -> AuthUser { throw URLError(.unsupportedURL) }
+    func deleteAccount() async throws { }
 }
 
 @MainActor

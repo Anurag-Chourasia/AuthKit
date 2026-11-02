@@ -30,4 +30,5 @@ public protocol AuthBackend: Sendable {
     func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser
     func handleCallback(_ url: URL) async throws -> AuthUser
     func signOut() async throws
+    func deleteAccount() async throws
 }

@@ -107,4 +107,10 @@ actor MockAuthBackend: AuthBackend {
         try await signIn(email: "callback@example.com", password: "")
     }
 
+    func deleteAccount() async throws {
+        if shouldFail {
+            throw MockAuthError.invalidCredentials
+        }
+        signedInUser = nil
+    }
 }
