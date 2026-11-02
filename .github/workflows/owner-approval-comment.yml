@@ -8,6 +8,7 @@ on:
 
 permissions:
   pull-requests: write
+  contents: read
 
 jobs:
   notify:
@@ -18,9 +19,31 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const owners = ['anurag-chourasia', 'anurag-chourasia-ios', 'sudeepa88'];
             const pr = context.payload.pull_request;
             const eventAction = context.payload.action;
+
+            // Dynamically load owners from .github/CODEOWNERS
+            let ownersDisplayList = ['@Anurag-Chourasia', '@Anurag-Chourasia-iOS', '@Sudeepa88'];
+            let owners = ownersDisplayList.map(h => h.replace('@', '').toLowerCase());
+
+            try {
+              const codeownersFile = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: '.github/CODEOWNERS',
+                ref: pr.head.ref || pr.base.ref
+              });
+              const raw = Buffer.from(codeownersFile.data.content, 'base64').toString('utf8');
+              const handles = raw.match(/@([a-zA-Z0-9-_]+)/g);
+              if (handles && handles.length > 0) {
+                ownersDisplayList = [...new Set(handles)];
+                owners = ownersDisplayList.map(h => h.replace('@', '').toLowerCase());
+              }
+            } catch (err) {
+              console.log('Using default owners list due to error reading CODEOWNERS:', err.message);
+            }
+
+            const ownersGroupDisplay = `**owners** (${ownersDisplayList.join(', ')})`;
 
             // --- Review Requested ---
             if (eventAction === 'review_requested') {
@@ -28,7 +51,7 @@ jobs:
               if (!reviewer) return;
 
               if (!owners.includes(reviewer.toLowerCase())) {
-                console.log(`${reviewer} is not an owner — skipping.`);
+                console.log(`${reviewer} is not in the owners group — skipping.`);
                 return;
               }
 
@@ -37,7 +60,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: `👀 **@${requester}** requested a review from **@${reviewer}** on behalf of **owners**`
+                body: `👀 **@${requester}** requested a review from **@${reviewer}** on behalf of ${ownersGroupDisplay}`
               });
               return;
             }
@@ -56,7 +79,7 @@ jobs:
               }
 
               if (!owners.includes(reviewer.toLowerCase())) {
-                console.log(`${reviewer} is not an owner — skipping.`);
+                console.log(`${reviewer} is not in the owners group — skipping.`);
                 return;
               }
 
@@ -64,6 +87,6 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: `✅ **@${reviewer}** approved on behalf of **owners**`
+                body: `✅ **@${reviewer}** approved on behalf of ${ownersGroupDisplay}`
               });
             }
