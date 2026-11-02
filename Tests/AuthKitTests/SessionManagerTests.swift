@@ -134,4 +134,40 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertFalse(sut.isLoading)
     }
 
+    @MainActor
+    func testDeleteAccountSuccess() async {
+        let backend = MockAuthBackend()
+        let service = AuthService(backend: backend)
+        let sut = SessionManager(authService: service)
+
+        await sut.signIn(
+            email: "delete-me@example.com",
+            password: "Password123"
+        )
+        guard case .authenticated = sut.state else {
+            XCTFail("Must be authenticated before deletion")
+            return
+        }
+
+        await sut.deleteAccount()
+
+        XCTAssertEqual(sut.state, .unauthenticated)
+        XCTAssertEqual(sut.notice, "Your account and associated cloud data have been deleted.")
+        XCTAssertNil(sut.errorMessage)
+        XCTAssertFalse(sut.isLoading)
+    }
+
+    @MainActor
+    func testDeleteAccountFailureIsRecoverable() async {
+        let backend = MockAuthBackend(shouldFail: true)
+        let service = AuthService(backend: backend)
+        let sut = SessionManager(authService: service)
+
+        // Attempt deletion when backend fails
+        await sut.deleteAccount()
+
+        XCTAssertNotNil(sut.errorMessage)
+        XCTAssertFalse(sut.isLoading)
+    }
+
 }

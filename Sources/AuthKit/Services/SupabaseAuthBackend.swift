@@ -64,6 +64,12 @@ public actor SupabaseAuthBackend: AuthBackend {
     public func signOut() async throws {
         try await client.auth.signOut(scope: .local)
     }
+
+    public func deleteAccount() async throws {
+        // Trigger server-side user deletion function or RPC
+        try await client.functions.invoke("delete-user-account")
+        try await client.auth.signOut(scope: .local)
+    }
     public func events() async -> AsyncStream<AuthSessionEvent> {
         let changes = client.auth.authStateChanges
         return AsyncStream { continuation in

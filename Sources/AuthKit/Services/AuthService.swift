@@ -59,4 +59,10 @@ public final class AuthService: Sendable {
     public func signOut() async throws {
         try await backend.signOut()
     }
+
+    // MARK: - Delete Account
+
+    public func deleteAccount() async throws {
+        try await backend.deleteAccount()
+    }
 }

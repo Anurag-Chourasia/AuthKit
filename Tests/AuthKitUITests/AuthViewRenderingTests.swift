@@ -16,6 +16,7 @@ private actor PreviewBackend: AuthBackend {
     func updatePassword(_ password: String) async throws { }
     func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser { AuthUser(id: UUID(), email: nil) }
     func handleCallback(_ url: URL) async throws -> AuthUser { AuthUser(id: UUID(), email: nil) }
+    func deleteAccount() async throws { }
 }
 
 @MainActor
