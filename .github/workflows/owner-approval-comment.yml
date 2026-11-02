@@ -37,7 +37,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: `👀 **@${requester}** requested **@${reviewer}** for review on behalf of **owners**`
+                body: `👀 **@${requester}** requested a review from **@${reviewer}** on behalf of **owners**`
               });
               return;
             }
