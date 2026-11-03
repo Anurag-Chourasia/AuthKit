@@ -9,25 +9,51 @@ public struct AppAuthConfiguration: Sendable {
     public let callbackURL: URL
     public let storageKey: String
     public let providers: [AuthProvider]
+    public let environment: AuthEnvironment
 
-    public init(projectURL: URL, publishableKey: String, callbackURL: URL,
-                storageKey: String, providers: [AuthProvider] = []) {
-        self.projectURL = projectURL; self.publishableKey = publishableKey
-        self.callbackURL = callbackURL; self.storageKey = storageKey; self.providers = providers
+    public init(
+        projectURL: URL,
+        publishableKey: String,
+        callbackURL: URL,
+        storageKey: String,
+        providers: [AuthProvider] = [],
+        environment: AuthEnvironment = .production
+    ) {
+        self.projectURL = projectURL
+        self.publishableKey = publishableKey
+        self.callbackURL = callbackURL
+        self.storageKey = storageKey
+        self.providers = providers
+        self.environment = environment
     }
 
-    public static func fromBundle(_ bundle: Bundle = .main) -> AppAuthConfiguration? {
-        guard let address = bundle.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
+    public static func fromBundle(
+        _ bundle: Bundle = .main,
+        environment: AuthEnvironment = .production
+    ) -> AppAuthConfiguration? {
+        let envPrefix = environment == .staging ? "STAGING_" : ""
+        let address = (bundle.object(forInfoDictionaryKey: "SUPABASE_\(envPrefix)URL") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "SUPABASE_URL") as? String)
+        let key = (bundle.object(forInfoDictionaryKey: "SUPABASE_\(envPrefix)PUBLISHABLE_KEY") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "SUPABASE_PUBLISHABLE_KEY") as? String)
+
+        guard let address,
               let url = URL(string: address), url.scheme == "https", url.host != nil,
-              let key = bundle.object(forInfoDictionaryKey: "SUPABASE_PUBLISHABLE_KEY") as? String,
-              !key.isEmpty, !key.contains("$("),
+              let key, !key.isEmpty, !key.contains("$("),
               let redirect = bundle.object(forInfoDictionaryKey: "AUTH_CALLBACK_URL") as? String,
               let callback = URL(string: redirect), callback.scheme != nil,
               let bundleID = bundle.bundleIdentifier else { return nil }
         let names = (bundle.object(forInfoDictionaryKey: "AUTH_PROVIDERS") as? String ?? "")
             .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        return .init(projectURL: url, publishableKey: key, callbackURL: callback,
-                     storageKey: bundleID + ".supabase.session", providers: names.compactMap(AuthProvider.init(rawValue:)))
+        let storageSuffix = environment == .staging ? ".supabase.staging.session" : ".supabase.session"
+        return .init(
+            projectURL: url,
+            publishableKey: key,
+            callbackURL: callback,
+            storageKey: bundleID + storageSuffix,
+            providers: names.compactMap(AuthProvider.init(rawValue:)),
+            environment: environment
+        )
     }
 
     public func accepts(_ url: URL) -> Bool {
