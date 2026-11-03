@@ -7,6 +7,11 @@ public enum AuthProvider: String, CaseIterable, Sendable {
     }
 }
 
+public enum AuthEnvironment: String, Sendable, CaseIterable {
+    case production
+    case staging
+}
+
 public struct AuthSessionEvent: Sendable {
     public let user: AuthUser?
     public let isPasswordRecovery: Bool
