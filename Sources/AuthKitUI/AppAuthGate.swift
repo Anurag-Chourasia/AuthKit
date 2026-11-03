@@ -68,18 +68,22 @@ public struct AppAuthConfiguration: Sendable {
 public struct AppAuthGate<Content: View>: View {
     private let configuration: AppAuthConfiguration?
     private let brand: AuthBrand
+    private let localizer: any AuthLocalizing
     private let onSignedOut: () -> Void
     private let content: (AuthUser, SessionManager) -> Content
 
     public init(brand: AuthBrand, configuration: AppAuthConfiguration? = .fromBundle(),
+                localizer: (any AuthLocalizing)? = nil,
                 onSignedOut: @escaping () -> Void = {},
                 @ViewBuilder content: @escaping (AuthUser, SessionManager) -> Content) {
         self.configuration = configuration; self.brand = brand
+        self.localizer = localizer ?? DefaultAuthLocalizer()
         self.onSignedOut = onSignedOut; self.content = content
     }
     public var body: some View {
         if let configuration {
             ConfiguredAuthGate(brand: brand, configuration: configuration,
+                               localizer: localizer,
                                onSignedOut: onSignedOut, content: content)
         } else {
             VStack(spacing: 16) {
@@ -91,6 +95,7 @@ public struct AppAuthGate<Content: View>: View {
                     .font(.caption).multilineTextAlignment(.center)
                 #endif
             }.padding()
+            .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
         }
     }
 }
@@ -99,6 +104,7 @@ public struct AppAuthGate<Content: View>: View {
 private struct ConfiguredAuthGate<Content: View>: View {
     let brand: AuthBrand
     let configuration: AppAuthConfiguration
+    let localizer: any AuthLocalizing
     let onSignedOut: () -> Void
     let content: (AuthUser, SessionManager) -> Content
     @StateObject private var session: SessionManager
@@ -106,8 +112,10 @@ private struct ConfiguredAuthGate<Content: View>: View {
     @State private var showingDeleteConfirmation = false
 
     init(brand: AuthBrand, configuration: AppAuthConfiguration,
+         localizer: any AuthLocalizing,
          onSignedOut: @escaping () -> Void, content: @escaping (AuthUser, SessionManager) -> Content) {
         self.brand = brand; self.configuration = configuration
+        self.localizer = localizer
         self.onSignedOut = onSignedOut; self.content = content
         let manager = SupabaseManager(url: configuration.projectURL, publishableKey: configuration.publishableKey,
             authOptions: .init(redirectToURL: configuration.callbackURL, storageKey: configuration.storageKey))
@@ -119,13 +127,13 @@ private struct ConfiguredAuthGate<Content: View>: View {
                 authView
             } else {
                 switch session.state {
-                case .loading: ProgressView("Restoring session")
+                case .loading: ProgressView(localizer.string("auth.status.please_wait"))
                 case .unauthenticated: authView
                 case .authenticated(let user):
                     content(user, session).id(user.id)
                         .safeAreaInset(edge: .bottom) {
                             Button { accountPresented = true } label: {
-                                Label("Account", systemImage: "person.crop.circle")
+                                Label(localizer.string("account.title"), systemImage: "person.crop.circle")
                                     .frame(maxWidth: .infinity, minHeight: 44)
                             }
                             .background(.regularMaterial)
@@ -134,17 +142,18 @@ private struct ConfiguredAuthGate<Content: View>: View {
                         .sheet(isPresented: $accountPresented) {
                             NavigationStack {
                                 Form {
-                                    Text(user.email ?? "Signed in")
+                                    Text(user.email ?? localizer.string("account.signed_in"))
                                         .accessibilityIdentifier("auth.accountEmail")
-                                    NavigationLink("Reset password") {
+                                    NavigationLink(localizer.string("auth.title.reset_password")) {
                                         AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
-                                                 initialScreen: .passwordReset, initialEmail: user.email ?? "")
-                                            .navigationTitle("Reset password")
+                                                 initialScreen: .passwordReset, initialEmail: user.email ?? "",
+                                                 localizer: localizer)
+                                            .navigationTitle(localizer.string("auth.title.reset_password"))
                                     }
                                     .accessibilityIdentifier("auth.accountResetPassword")
                                     .disabled(session.isLoading)
                                     if let error = session.errorMessage { Text(error).foregroundStyle(.red) }
-                                    Button("Sign out", role: .destructive) {
+                                    Button(localizer.string("auth.button.sign_out"), role: .destructive) {
                                         Task {
                                             await session.signOut()
                                             if session.state == .unauthenticated { accountPresented = false }
@@ -153,25 +162,25 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                     .accessibilityIdentifier("auth.signOut")
 
                                     Section {
-                                        Button("Delete account", role: .destructive) {
+                                        Button(localizer.string("auth.button.delete_account"), role: .destructive) {
                                             showingDeleteConfirmation = true
                                         }
                                         .disabled(session.isLoading)
                                         .accessibilityIdentifier("auth.deleteAccount")
                                     } footer: {
-                                        Text("Permanently deletes your account credentials and associated cloud records across this portfolio.")
+                                        Text(localizer.string("account.delete_footer_notice"))
                                             .font(.footnote)
                                             .foregroundStyle(.secondary)
                                     }
                                 }
-                                .navigationTitle("Account")
-                                .toolbar { Button("Done") { accountPresented = false } }
+                                .navigationTitle(localizer.string("account.title"))
+                                .toolbar { Button(localizer.string("account.done")) { accountPresented = false } }
                                 .confirmationDialog(
-                                    "Delete Account?",
+                                    localizer.string("account.delete_confirmation_title"),
                                     isPresented: $showingDeleteConfirmation,
                                     titleVisibility: .visible
                                 ) {
-                                    Button("Delete Account Permanently", role: .destructive) {
+                                    Button(localizer.string("account.delete_confirmation_action"), role: .destructive) {
                                         Task {
                                             await session.deleteAccount()
                                             if session.state == .unauthenticated {
@@ -179,15 +188,17 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                             }
                                         }
                                     }
-                                    Button("Cancel", role: .cancel) { }
+                                    Button(localizer.string("common.cancel"), role: .cancel) { }
                                 } message: {
-                                    Text("This will permanently remove your cloud identity and records. You cannot undo this action.")
+                                    Text(localizer.string("account.delete_confirmation_message"))
                                 }
                             }
+                            .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
                         }
                 }
             }
         }
+        .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
         .task { await session.observeAuthChanges() }
         .onChange(of: session.state) { state in
             if state == .unauthenticated { accountPresented = false; onSignedOut() }
@@ -204,6 +215,6 @@ private struct ConfiguredAuthGate<Content: View>: View {
     }
     private var authView: some View {
         AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
-                 providers: configuration.providers)
+                 providers: configuration.providers, localizer: localizer)
     }
 }

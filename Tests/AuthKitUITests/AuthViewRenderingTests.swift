@@ -47,5 +47,46 @@ final class AuthViewRenderingTests: XCTestCase {
             }
         }
     }
+
+    func testAuthViewRTLAndLocalizedRendering() async throws {
+        let callback = try XCTUnwrap(URL(string: "preview-auth://auth/callback"))
+
+        let englishLocalizer = DefaultAuthLocalizer(isRightToLeft: false)
+        let arabicLocalizer = DefaultAuthLocalizer(
+            isRightToLeft: true,
+            customStrings: [
+                "auth.title.sign_in": "تسجيل الدخول",
+                "auth.field.email": "البريد الإلكتروني",
+                "auth.field.password": "كلمة المرور"
+            ]
+        )
+
+        for localizer in [englishLocalizer, arabicLocalizer] {
+            let session = SessionManager(authService: AuthService(backend: PreviewBackend()))
+            let view = AuthView(
+                session: session,
+                brand: .myTV,
+                redirectTo: callback,
+                providers: [.github],
+                localizer: localizer
+            ).formContent
+            .environment(\.sizeCategory, .accessibilityExtraLarge)
+            .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
+            .frame(width: 414)
+            .background(Color.white)
+
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.uiImage)
+            let cgImage = try XCTUnwrap(image.cgImage)
+            let pixels = try XCTUnwrap(cgImage.dataProvider?.data) as Data
+            XCTAssertGreaterThan(Set(pixels).count, 8, "Localized view must render meaningful pixels")
+
+            let attachment = XCTAttachment(image: image)
+            attachment.name = localizer.isRightToLeft ? "authview-arabic-rtl" : "authview-english-ltr"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
 }
 #endif
