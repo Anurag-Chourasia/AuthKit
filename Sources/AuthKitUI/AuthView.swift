@@ -20,7 +20,6 @@ public enum AuthBrand: String, CaseIterable, Sendable {
         case .motivationDaily: "A little inspiration, every day."
         }
     }
-
 }
 
 public enum AuthScreen: Sendable { case login, passwordReset }
@@ -33,18 +32,31 @@ public struct AuthView: View {
     private let redirectTo: URL
     private let providers: [AuthProvider]
     private let initialScreen: AuthScreen
+    private let localizer: any AuthLocalizing
     @State private var mode: Mode = .login
     @State private var email = ""
     @State private var password = ""
     @State private var confirmation = ""
-    private enum Mode: String { case login = "Sign in", signup = "Create account", forgot = "Reset password" }
+
+    private enum Mode: String {
+        case login, signup, forgot
+        func localizedTitle(using localizer: any AuthLocalizing) -> String {
+            switch self {
+            case .login: return localizer.string("auth.title.sign_in")
+            case .signup: return localizer.string("auth.title.create_account")
+            case .forgot: return localizer.string("auth.title.reset_password")
+            }
+        }
+    }
 
     public init(session: SessionManager, brand: AuthBrand, redirectTo: URL,
                 providers: [AuthProvider] = [], palette: AuthPalette? = nil,
-                initialScreen: AuthScreen = .login, initialEmail: String = "") {
+                initialScreen: AuthScreen = .login, initialEmail: String = "",
+                localizer: (any AuthLocalizing)? = nil) {
         self.palette = palette ?? .appAssets(fallback: .projectDefault(for: brand))
         self.session = session; self.brand = brand; self.redirectTo = redirectTo; self.providers = providers
         self.initialScreen = initialScreen
+        self.localizer = localizer ?? DefaultAuthLocalizer()
         _mode = State(initialValue: initialScreen == .passwordReset ? .forgot : .login)
         _email = State(initialValue: initialEmail)
     }
@@ -54,6 +66,7 @@ public struct AuthView: View {
             .foregroundStyle(palette.foreground)
             .background(palette.background)
             .tint(palette.action)
+            .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
             .onChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
             .onDisappear { password = ""; confirmation = "" }
     }
@@ -66,13 +79,13 @@ public struct AuthView: View {
                 Text(brand.subtitle).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 SurfaceCard {
                     VStack(alignment: .leading, spacing: Spacing.sixteen) {
-                        Text(session.isPasswordRecovery ? "Choose a new password" : mode.rawValue).font(.title2.bold())
+                        Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode.localizedTitle(using: localizer)).font(.title2.bold())
                         if !session.isPasswordRecovery {
                             if mode == .forgot {
-                                Text("We’ll email you a link to choose a new password. Open it on this device.")
+                                Text(localizer.string("auth.instruction.reset_email_sent"))
                                     .font(.subheadline).foregroundStyle(.secondary)
                             }
-                            TextField("Email", text: $email)
+                            TextField(localizer.string("auth.field.email"), text: $email)
                                 .textContentType(.emailAddress)
                                 .autocorrectionDisabled()
                                 #if os(iOS)
@@ -82,13 +95,13 @@ public struct AuthView: View {
                                 .accessibilityIdentifier("auth.email")
                         }
                         if session.isPasswordRecovery || mode != .forgot {
-                            SecureField("Password", text: $password)
+                            SecureField(localizer.string("auth.field.password"), text: $password)
                                 .textContentType(mode == .login && !session.isPasswordRecovery ? .password : .newPassword)
                                 .accessibilityIdentifier("auth.password")
                             if mode == .signup || session.isPasswordRecovery {
-                                SecureField("Confirm password", text: $confirmation).textContentType(.newPassword)
+                                SecureField(localizer.string("auth.field.confirm_password"), text: $confirmation).textContentType(.newPassword)
                                     .accessibilityIdentifier("auth.confirmPassword")
-                                Text("Use at least 8 characters. Passwords must match.")
+                                Text(localizer.string("auth.instruction.password_requirements"))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
@@ -97,7 +110,7 @@ public struct AuthView: View {
                         Button {
                             Task { await submit() }
                         } label: {
-                            Text(session.isPasswordRecovery ? "Update password" : mode == .forgot ? "Send reset link" : mode.rawValue)
+                            Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode == .forgot ? localizer.string("auth.title.reset_password") : mode.localizedTitle(using: localizer))
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, minHeight: 52)
                                 .contentShape(Rectangle())
@@ -108,19 +121,19 @@ public struct AuthView: View {
                         .opacity(!canSubmit || session.isLoading ? 0.4 : 1)
                         .disabled(!canSubmit || session.isLoading)
                         .accessibilityIdentifier("auth.submit")
-                        if session.isLoading { ProgressView("Please wait") }
+                        if session.isLoading { ProgressView(localizer.string("auth.status.please_wait")) }
                     }
                     .textFieldStyle(.roundedBorder)
                 }
                 if !session.isPasswordRecovery && initialScreen == .login {
                     if mode == .login {
-                        Button("Forgot password?") { changeMode(.forgot) }
+                        Button(localizer.string("auth.button.forgot_password")) { changeMode(.forgot) }
                             .accessibilityIdentifier("auth.forgotPassword")
                             .disabled(session.isLoading)
                         if !providers.isEmpty {
                             HStack(spacing: Spacing.twelve) {
                                 Rectangle().frame(height: StrokeWidth.one)
-                                Text("or continue with").font(.caption).fixedSize()
+                                Text(localizer.string("auth.or_continue_with")).font(.caption).fixedSize()
                                 Rectangle().frame(height: StrokeWidth.one)
                             }
                             .foregroundStyle(.secondary)
@@ -136,7 +149,7 @@ public struct AuthView: View {
                             .padding(.horizontal, Spacing.sixteen)
                         }
                     }
-                    Button(mode == .login ? "Create an account" : "Back to sign in") {
+                    Button(mode == .login ? localizer.string("auth.button.create_an_account") : localizer.string("auth.button.back_to_sign_in")) {
                         changeMode(mode == .login ? .signup : .login)
                     }
                     .disabled(session.isLoading)
