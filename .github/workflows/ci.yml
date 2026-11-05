@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build-and-test:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: xcode-27
+    runs-on: ${{ vars.CI_RUNNER_LABEL || 'xcode-27' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -24,7 +24,9 @@ jobs:
           UICOMPONENTSKIT_DEPLOY_KEY: ${{ secrets.UICOMPONENTSKIT_DEPLOY_KEY }}
         run: bash Scripts/configure-private-dependencies.sh
       - name: Select Xcode
-        run: echo 'DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer' >> "$GITHUB_ENV"
+        env:
+          CI_XCODE_PATH: ${{ vars.CI_DEVELOPER_DIR }}
+        run: echo "DEVELOPER_DIR=${CI_XCODE_PATH:-/Applications/Xcode_27.1.app/Contents/Developer}" >> "$GITHUB_ENV"
       - name: Enforce pinned SwiftLint and dependencies
         run: |
           bash Scripts/install-swiftlint.sh "$RUNNER_TEMP/swiftlint"

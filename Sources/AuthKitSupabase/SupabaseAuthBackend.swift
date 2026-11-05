@@ -7,6 +7,7 @@
 
 
 import Foundation
+import AuthKit
 import Supabase
 
 public actor SupabaseAuthBackend: AuthBackend {

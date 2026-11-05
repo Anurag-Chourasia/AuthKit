@@ -1,6 +1,6 @@
 import SwiftUI
 import AuthKit
-import Supabase
+import AuthKitSupabase
 
 /// Host-owned configuration; contains only client-public configuration, never an admin key.
 public struct AppAuthConfiguration: Sendable {
@@ -63,10 +63,35 @@ public struct AppAuthConfiguration: Sendable {
     }
 }
 
+/// Supplies host-owned configuration after a dynamic backend-readiness check.
+/// This is a rollout input; backend authorization remains server-enforced.
+public protocol AuthConfigurationProviding: Sendable {
+    func configuration() async throws -> AppAuthConfiguration?
+}
+
+/// Hosts inject readiness policy; offline/session policy is not guessed by the UI package.
+public struct ReadinessCheckedAuthConfiguration: AuthConfigurationProviding {
+    private let candidate: AppAuthConfiguration?
+    private let isReady: @Sendable () async throws -> Bool
+
+    public init(configuration: AppAuthConfiguration?, isReady: @escaping @Sendable () async throws -> Bool) {
+        candidate = configuration
+        self.isReady = isReady
+    }
+
+    public func configuration() async throws -> AppAuthConfiguration? {
+        guard let candidate, try await isReady() else { return nil }
+        return candidate
+    }
+}
+
 /// Keep this gate at the app root so observation survives login-view dismissal.
 @MainActor
 public struct AppAuthGate<Content: View>: View {
     private let configuration: AppAuthConfiguration?
+    private var configurationProvider: (any AuthConfigurationProviding)?
+    @State private var dynamicConfiguration: AppAuthConfiguration?
+    @State private var checkedReadiness = false
     private let brand: AuthBrand
     private let localizer: any AuthLocalizing
     private let onSignedOut: () -> Void
@@ -80,8 +105,32 @@ public struct AppAuthGate<Content: View>: View {
         self.localizer = localizer ?? DefaultAuthLocalizer()
         self.onSignedOut = onSignedOut; self.content = content
     }
+    public init(brand: AuthBrand, configurationProvider: any AuthConfigurationProviding,
+                localizer: (any AuthLocalizing)? = nil,
+                onSignedOut: @escaping () -> Void = {},
+                @ViewBuilder content: @escaping (AuthUser, SessionManager) -> Content) {
+        self.init(brand: brand, configuration: nil, localizer: localizer,
+                  onSignedOut: onSignedOut, content: content)
+        self.configurationProvider = configurationProvider
+    }
+
     public var body: some View {
-        if let configuration {
+        Group {
+            if configurationProvider != nil && !checkedReadiness {
+                ProgressView(localizer.string("auth.status.please_wait"))
+            } else { configuredBody }
+        }
+        .task {
+            guard let configurationProvider else { return }
+            let resolved = try? await configurationProvider.configuration()
+            guard !Task.isCancelled else { return }
+            dynamicConfiguration = resolved
+            checkedReadiness = true
+        }
+    }
+
+    @ViewBuilder private var configuredBody: some View {
+        if let configuration = configurationProvider == nil ? configuration : dynamicConfiguration {
             ConfiguredAuthGate(brand: brand, configuration: configuration,
                                localizer: localizer,
                                onSignedOut: onSignedOut, content: content)
@@ -117,9 +166,10 @@ private struct ConfiguredAuthGate<Content: View>: View {
         self.brand = brand; self.configuration = configuration
         self.localizer = localizer
         self.onSignedOut = onSignedOut; self.content = content
-        let manager = SupabaseManager(url: configuration.projectURL, publishableKey: configuration.publishableKey,
-            authOptions: .init(redirectToURL: configuration.callbackURL, storageKey: configuration.storageKey))
-        _session = StateObject(wrappedValue: SessionManager(authService: AuthService(backend: SupabaseAuthBackend(manager: manager))))
+        let backend = SupabaseBackendFactory.make(projectURL: configuration.projectURL,
+            publishableKey: configuration.publishableKey, callbackURL: configuration.callbackURL,
+            storageKey: configuration.storageKey)
+        _session = StateObject(wrappedValue: SessionManager(authService: AuthService(backend: backend)))
     }
     var body: some View {
         Group {

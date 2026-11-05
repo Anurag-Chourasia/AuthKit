@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AuthKit
 import Supabase
 
 public final class SupabaseManager: Sendable {

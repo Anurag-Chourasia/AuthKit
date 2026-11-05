@@ -1,9 +1,30 @@
+import AuthKitSupabase
 import Foundation
 import XCTest
 import Supabase
 @testable import AuthKit
 
 final class SessionStorageTests: XCTestCase {
+    func testKeychainRoundTripUpdateIsolationAndDeletion() throws {
+        #if os(macOS)
+        let storage = KeychainLocalStorage(service: "AuthKit.Tests." + UUID().uuidString)
+        let first = "session-one"
+        let second = "session-two"
+        defer { try? storage.remove(key: first); try? storage.remove(key: second) }
+        XCTAssertThrowsError(try storage.retrieve(key: first))
+        try storage.store(key: first, value: Data("initial".utf8))
+        try storage.store(key: second, value: Data("isolated".utf8))
+        try storage.store(key: first, value: Data("updated".utf8))
+        XCTAssertEqual(try storage.retrieve(key: first), Data("updated".utf8))
+        XCTAssertEqual(try storage.retrieve(key: second), Data("isolated".utf8))
+        try storage.remove(key: first)
+        XCTAssertThrowsError(try storage.retrieve(key: first))
+        XCTAssertEqual(try storage.retrieve(key: second), Data("isolated".utf8))
+        #else
+        throw XCTSkip("The unsigned iOS package runner has no Keychain entitlement. Real Keychain coverage runs on macOS; signed iOS host verification remains a release gate.")
+        #endif
+    }
+
     func testSessionRestoresThroughInjectedStorageAndRemainsIsolated() async throws {
         let storage = InMemoryAuthStorage()
         let now = Date()

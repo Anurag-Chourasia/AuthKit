@@ -1,3 +1,4 @@
+import AuthKitSupabase
 //
 //  SupabaseManagerTests.swift
 //  AuthKit
