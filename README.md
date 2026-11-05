@@ -17,8 +17,11 @@ and Apple branding review remain required before App Store submission.
 
 ## Host integration
 
+Add the AuthKitSupabase product when constructing the Supabase adapter directly.
+
 ```swift
 import AuthKit
+import AuthKitSupabase
 import AuthKitUI
 import Supabase
 
