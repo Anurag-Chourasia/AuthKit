@@ -177,3 +177,5 @@ builds can fail Keychain storage and cannot establish OAuth/recovery readiness.
 `AppAuthGate` also accepts an `AuthConfigurationProviding` implementation. `ReadinessCheckedAuthConfiguration` invokes an injected asynchronous readiness policy and fails closed when configuration is absent, readiness is denied, or the check throws. The existing static initializer remains available. Host rollout flags remain an explicit ceiling; backend authorization must remain server-enforced.
 
 Keychain regression tests create a unique test-only service, verify writes, updates, isolation and deletion, and remove their records. Live Supabase lifecycle tests require the documented test credentials and remain separate from mock and storage verification.
+
+The unsigned iOS SwiftPM test runner lacks a Keychain entitlement (-34018). The real-Keychain regression runs in the macOS CI lane and explicitly skips in that iOS runner. A signed iOS application-host Keychain/OAuth smoke test remains a separate release gate; an unsigned package pass does not satisfy it.

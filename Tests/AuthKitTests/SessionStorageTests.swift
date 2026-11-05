@@ -6,6 +6,7 @@ import Supabase
 
 final class SessionStorageTests: XCTestCase {
     func testKeychainRoundTripUpdateIsolationAndDeletion() throws {
+        #if os(macOS)
         let storage = KeychainLocalStorage(service: "AuthKit.Tests." + UUID().uuidString)
         let first = "session-one"
         let second = "session-two"
@@ -19,6 +20,9 @@ final class SessionStorageTests: XCTestCase {
         try storage.remove(key: first)
         XCTAssertThrowsError(try storage.retrieve(key: first))
         XCTAssertEqual(try storage.retrieve(key: second), Data("isolated".utf8))
+        #else
+        throw XCTSkip("The unsigned iOS package runner has no Keychain entitlement. Real Keychain coverage runs on macOS; signed iOS host verification remains a release gate.")
+        #endif
     }
 
     func testSessionRestoresThroughInjectedStorageAndRemainsIsolated() async throws {
