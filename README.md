@@ -169,3 +169,11 @@ the account sheet and takes priority over authenticated content.
 
 Use simulator signing for runtime authentication validation. Unsigned compile-only
 builds can fail Keychain storage and cannot establish OAuth/recovery readiness.
+
+## Provider modules and readiness
+
+`AuthKit` contains provider-independent models, `AuthBackend`, `AuthService`, and session state. Supabase construction now lives in the separate `AuthKitSupabase` product. Clients that construct `SupabaseManager` or `SupabaseAuthBackend` must depend on and import `AuthKitSupabase`; consumers of `AuthKitUI` receive that adapter through the UI product.
+
+`AppAuthGate` also accepts an `AuthConfigurationProviding` implementation. `ReadinessCheckedAuthConfiguration` invokes an injected asynchronous readiness policy and fails closed when configuration is absent, readiness is denied, or the check throws. The existing static initializer remains available. Host rollout flags remain an explicit ceiling; backend authorization must remain server-enforced.
+
+Keychain regression tests create a unique test-only service, verify writes, updates, isolation and deletion, and remove their records. Live Supabase lifecycle tests require the documented test credentials and remain separate from mock and storage verification.
