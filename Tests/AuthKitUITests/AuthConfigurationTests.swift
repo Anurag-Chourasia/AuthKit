@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import XCTest
 import AuthKit
 import AuthKitUI
@@ -59,4 +60,36 @@ final class AuthConfigurationTests: XCTestCase {
         XCTAssertEqual(stagingConfig.storageKey, "com.example.app.supabase.staging.session")
         XCTAssertNotEqual(prodConfig.storageKey, stagingConfig.storageKey, "Staging and production storage keys must never collide")
     }
+
+    @MainActor
+    func testAppAuthGateAcceptsInjectableBackendFactory() throws {
+        let callback = try XCTUnwrap(URL(string: "test-auth://auth/callback"))
+        let config = AppAuthConfiguration(
+            projectURL: URL(string: "https://example.supabase.co")!,
+            publishableKey: "fixture",
+            callbackURL: callback,
+            storageKey: "fixture"
+        )
+        let gate = AppAuthGate(brand: .showBook, configuration: config, backendFactory: { _ in
+            FakeAuthBackend()
+        }) { user, _ in
+            Text(user.id.uuidString)
+        }
+        XCTAssertNotNil(gate)
+    }
 }
+
+private actor FakeAuthBackend: AuthBackend {
+    func currentUser() async throws -> AuthUser? { nil }
+    func events() async -> AsyncStream<AuthSessionEvent> { AsyncStream { $0.finish() } }
+    func signIn(email: String, password: String) async throws -> AuthUser { AuthUser(id: UUID(), email: email) }
+    func signUp(email: String, password: String) async throws -> Bool { true }
+    func signOut() async throws { }
+    func refreshSession() async throws { }
+    func requestPasswordReset(email: String, redirectTo: URL) async throws { }
+    func updatePassword(_ password: String) async throws { }
+    func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser { AuthUser(id: UUID(), email: nil) }
+    func handleCallback(_ url: URL) async throws -> AuthUser { AuthUser(id: UUID(), email: nil) }
+    func deleteAccount() async throws { }
+}
+

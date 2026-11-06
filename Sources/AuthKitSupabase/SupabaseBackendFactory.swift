@@ -9,4 +9,13 @@ public enum SupabaseBackendFactory {
             authOptions: .init(redirectToURL: callbackURL, storageKey: storageKey))
         return SupabaseAuthBackend(manager: manager)
     }
+
+    public static func make(configuration: AppAuthConfiguration) -> any AuthBackend {
+        make(
+            projectURL: configuration.projectURL,
+            publishableKey: configuration.publishableKey,
+            callbackURL: configuration.callbackURL,
+            storageKey: configuration.storageKey
+        )
+    }
 }
