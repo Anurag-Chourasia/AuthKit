@@ -202,7 +202,9 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                     }
                                     .accessibilityIdentifier("auth.accountResetPassword")
                                     .disabled(session.isLoading)
-                                    if let error = session.errorMessage { Text(error).foregroundStyle(.red) }
+                                    if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
+                                        Text(localizer.string(errorKey)).foregroundStyle(.red)
+                                    }
                                     Button(localizer.string("auth.button.sign_out"), role: .destructive) {
                                         Task {
                                             await session.signOut()

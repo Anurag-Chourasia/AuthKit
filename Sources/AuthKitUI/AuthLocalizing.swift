@@ -40,7 +40,16 @@ public struct DefaultAuthLocalizer: AuthLocalizing {
         "account.delete_confirmation_message": "This will permanently remove your cloud identity and records. You cannot undo this action.",
         "account.delete_footer_notice": "Permanently deletes your account credentials and associated cloud records across this portfolio.",
         "account.done": "Done",
-        "common.cancel": "Cancel"
+        "common.cancel": "Cancel",
+        "auth.notice.confirm_email": "Check your email to confirm your account.",
+        "auth.notice.account_deleted": "Your account and associated cloud data have been deleted.",
+        "auth.notice.password_reset_sent": "If an account exists, a reset link will be sent to your email.",
+        "auth.notice.password_updated": "Your password has been updated.",
+        "errors.network_unreachable": "Network connection lost. Please check your internet connection.",
+        "errors.invalid_credentials": "Invalid email or password. Please try again.",
+        "errors.session_expired": "Your session has expired. Please sign in again.",
+        "errors.account_deletion_failed": "Unable to delete account at this time. Please retry.",
+        "errors.generic": "Something went wrong"
     ]
 
     public init(isRightToLeft: Bool = false, customStrings: [String: String] = [:]) {

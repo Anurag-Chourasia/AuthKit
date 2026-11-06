@@ -7,13 +7,36 @@ public enum AuthState: Equatable, Sendable {
     case unauthenticated
 }
 
+/// Semantic notice states emitted by `SessionManager`.
+public enum AuthNotice: String, CaseIterable, Equatable, Sendable {
+    case confirmEmail = "auth.notice.confirm_email"
+    case accountDeleted = "auth.notice.account_deleted"
+    case passwordResetSent = "auth.notice.password_reset_sent"
+    case passwordUpdated = "auth.notice.password_updated"
+
+    public var localizationKey: String { rawValue }
+}
+
+/// Semantic authentication failure categories emitted by `SessionManager`.
+public enum AuthSessionError: String, CaseIterable, Equatable, Sendable {
+    case networkUnreachable = "errors.network_unreachable"
+    case invalidCredentials = "errors.invalid_credentials"
+    case sessionExpired = "errors.session_expired"
+    case accountDeletionFailed = "errors.account_deletion_failed"
+    case generic = "errors.generic"
+
+    public var localizationKey: String { rawValue }
+}
+
 /// Own one instance per app session. Operations are serialized: a second user intent
 /// is rejected while an authentication request is active, including browser OAuth.
 @MainActor
 public final class SessionManager: ObservableObject {
     @Published public private(set) var state: AuthState = .loading
     @Published public private(set) var isLoading = false
+    @Published public private(set) var semanticError: AuthSessionError?
     @Published public private(set) var errorMessage: String?
+    @Published public private(set) var semanticNotice: AuthNotice?
     @Published public private(set) var notice: String?
     @Published public private(set) var isPasswordRecovery = false
     private let authService: AuthService
@@ -41,19 +64,40 @@ public final class SessionManager: ObservableObject {
         await withTaskCancellationHandler { await task.value } onCancel: { task.cancel() }
     }
 
-    private func perform(_ operation: () async throws -> Void) async {
+    private func perform(
+        defaultError: AuthSessionError = .generic,
+        _ operation: () async throws -> Void
+    ) async {
         guard !isLoading else { return }
         isLoading = true
+        semanticError = nil
         errorMessage = nil
+        semanticNotice = nil
         notice = nil
         defer { isLoading = false }
         do { try await operation() }
         catch is CancellationError { }
-        catch { errorMessage = error.localizedDescription }
+        catch {
+            let mapped = Self.classify(error, defaultError: defaultError)
+            semanticError = mapped
+            errorMessage = mapped.localizationKey
+        }
+    }
+
+    private static func classify(_ error: Error, defaultError: AuthSessionError) -> AuthSessionError {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+                return .networkUnreachable
+            default:
+                break
+            }
+        }
+        return defaultError
     }
 
     public func restoreSession() async {
-        await perform {
+        await perform(defaultError: .sessionExpired) {
             let started = revision
             do {
                 let user = try await authService.currentUser()
@@ -66,7 +110,7 @@ public final class SessionManager: ObservableObject {
     }
 
     public func signIn(email: String, password: String) async {
-        await perform {
+        await perform(defaultError: .invalidCredentials) {
             let started = revision
             do {
                 let user = try await authService.signIn(email: email, password: password)
@@ -81,8 +125,10 @@ public final class SessionManager: ObservableObject {
     public func signUp(email: String, password: String) async {
         await perform {
             let confirmationRequired = try await authService.signUp(email: email, password: password)
-            if confirmationRequired { notice = "Check your email to confirm your account." }
-            else {
+            if confirmationRequired {
+                semanticNotice = .confirmEmail
+                notice = AuthNotice.confirmEmail.localizationKey
+            } else {
                 let started = revision
                 let user = try await authService.currentUser()
                 if revision == started { state = user.map(AuthState.authenticated) ?? .unauthenticated }
@@ -100,12 +146,13 @@ public final class SessionManager: ObservableObject {
     }
 
     public func deleteAccount() async {
-        await perform {
+        await perform(defaultError: .accountDeletionFailed) {
             let started = revision
             try await authService.deleteAccount()
             if revision == started { state = .unauthenticated }
             isPasswordRecovery = false
-            notice = "Your account and associated cloud data have been deleted."
+            semanticNotice = .accountDeleted
+            notice = AuthNotice.accountDeleted.localizationKey
         }
     }
 
@@ -120,7 +167,8 @@ public final class SessionManager: ObservableObject {
     public func requestPasswordReset(email: String, redirectTo: URL) async {
         await perform {
             try await authService.requestPasswordReset(email: email, redirectTo: redirectTo)
-            notice = "If an account exists, a reset link will be sent to your email."
+            semanticNotice = .passwordResetSent
+            notice = AuthNotice.passwordResetSent.localizationKey
         }
     }
 
@@ -128,14 +176,15 @@ public final class SessionManager: ObservableObject {
         await perform {
             try await authService.updatePassword(password)
             isPasswordRecovery = false
-            notice = "Your password has been updated."
+            semanticNotice = .passwordUpdated
+            notice = AuthNotice.passwordUpdated.localizationKey
         }
     }
 
     /// Host must first match the callback against its configured URL scheme/host/path.
     /// Browser OAuth consumes its own callback; forward email confirmation/recovery here.
     public func handleCallback(_ url: URL) async {
-        await perform {
+        await perform(defaultError: .sessionExpired) {
             let started = revision
             let user = try await authService.handleCallback(url)
             if revision == started { state = .authenticated(user) }

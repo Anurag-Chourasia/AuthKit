@@ -105,8 +105,12 @@ public struct AuthView: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        if let error = session.errorMessage { Text(error).foregroundStyle(.red).accessibilityIdentifier("auth.error") }
-                        if let notice = session.notice { Text(notice).accessibilityIdentifier("auth.notice") }
+                        if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
+                            Text(localizer.string(errorKey)).foregroundStyle(.red).accessibilityIdentifier("auth.error")
+                        }
+                        if let noticeKey = session.semanticNotice?.localizationKey ?? session.notice {
+                            Text(localizer.string(noticeKey)).accessibilityIdentifier("auth.notice")
+                        }
                         Button {
                             Task { await submit() }
                         } label: {

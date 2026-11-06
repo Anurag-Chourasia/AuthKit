@@ -152,7 +152,8 @@ final class SessionManagerTests: XCTestCase {
         await sut.deleteAccount()
 
         XCTAssertEqual(sut.state, .unauthenticated)
-        XCTAssertEqual(sut.notice, "Your account and associated cloud data have been deleted.")
+        XCTAssertEqual(sut.semanticNotice, .accountDeleted)
+        XCTAssertEqual(sut.notice, AuthNotice.accountDeleted.localizationKey)
         XCTAssertNil(sut.errorMessage)
         XCTAssertFalse(sut.isLoading)
     }
@@ -166,8 +167,32 @@ final class SessionManagerTests: XCTestCase {
         // Attempt deletion when backend fails
         await sut.deleteAccount()
 
-        XCTAssertNotNil(sut.errorMessage)
+        XCTAssertEqual(sut.semanticError, .accountDeletionFailed)
+        XCTAssertEqual(sut.errorMessage, AuthSessionError.accountDeletionFailed.localizationKey)
         XCTAssertFalse(sut.isLoading)
+    }
+
+    @MainActor
+    func testSemanticNoticesAndUntrustedProviderErrorFallback() async throws {
+        let sut = SessionManager(authService: AuthService(backend: MockAuthBackend()))
+        let callback = try XCTUnwrap(URL(string: "test-auth://callback"))
+
+        await sut.signUp(email: "test@example.com", password: "Password123")
+        XCTAssertEqual(sut.semanticNotice, .confirmEmail)
+        XCTAssertEqual(sut.notice, "auth.notice.confirm_email")
+
+        await sut.requestPasswordReset(email: "test@example.com", redirectTo: callback)
+        XCTAssertEqual(sut.semanticNotice, .passwordResetSent)
+        XCTAssertEqual(sut.notice, "auth.notice.password_reset_sent")
+
+        await sut.updatePassword("NewPassword123")
+        XCTAssertEqual(sut.semanticNotice, .passwordUpdated)
+        XCTAssertEqual(sut.notice, "auth.notice.password_updated")
+
+        let failing = SessionManager(authService: AuthService(backend: MockAuthBackend(shouldFail: true)))
+        await failing.signIn(email: "test@example.com", password: "wrong")
+        XCTAssertEqual(failing.semanticError, .invalidCredentials)
+        XCTAssertEqual(failing.errorMessage, "errors.invalid_credentials")
     }
 
 }

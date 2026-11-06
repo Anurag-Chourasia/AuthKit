@@ -83,7 +83,11 @@ user updates and password recovery. Errors preserve existing state except failed
 explicit restoration/login, which leave the session unauthenticated.
 
 `AuthService.signUp` retains its existing Bool contract: true means confirmation is
-required (no session returned). SessionManager exposes a human-readable notice.
+required (no session returned). `SessionManager` emits semantic notice (`AuthNotice`)
+and error (`AuthSessionError`) states mapped to canonical localization keys
+(`auth.notice.*`, `errors.*`), which `AuthView` and `AppAuthGate` resolve through
+`AuthLocalizing` across `en`, `fr`, and `ar`. Untrusted provider/transport errors
+are classified into safe localized keys without exposing raw provider strings in UI.
 
 ## Validation / CI
 
