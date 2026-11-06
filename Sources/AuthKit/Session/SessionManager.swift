@@ -39,12 +39,21 @@ public final class SessionManager: ObservableObject {
     @Published public private(set) var semanticNotice: AuthNotice?
     @Published public private(set) var notice: String?
     @Published public private(set) var isPasswordRecovery = false
+    @Published public var isAccountPresented = false
     private let authService: AuthService
     private var observation: Task<Void, Never>?
     private var revision = 0
 
     public init(authService: AuthService) { self.authService = authService }
     deinit { observation?.cancel() }
+
+    public func showAccount() {
+        isAccountPresented = true
+    }
+
+    public func hideAccount() {
+        isAccountPresented = false
+    }
 
     /// Call from the host's root `.task`. Cancellation tears down the SDK listener.
     public func observeAuthChanges() async {
