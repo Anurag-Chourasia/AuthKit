@@ -88,8 +88,6 @@ private struct ConfiguredAuthGate<Content: View>: View {
     let onSignedOut: () -> Void
     let content: (AuthUser, SessionManager) -> Content
     @StateObject private var session: SessionManager
-    @State private var accountPresented = false
-    @State private var showingDeleteConfirmation = false
 
     init(brand: AuthBrand, configuration: AppAuthConfiguration,
          backendFactory: AuthBackendFactory,
@@ -111,71 +109,23 @@ private struct ConfiguredAuthGate<Content: View>: View {
                 case .unauthenticated: authView
                 case .authenticated(let user):
                     content(user, session).id(user.id)
-                        .safeAreaInset(edge: .bottom) {
-                            Button { accountPresented = true } label: {
-                                Label(localizer.string("account.title"), systemImage: \.personCropCircle)
-                                    .frame(maxWidth: .infinity, minHeight: TouchTarget.minimum)
-                            }
-                            .background(.regularMaterial)
-                            .accessibilityIdentifier(.authAccount)
+                        .toolbar {
+                            #if os(iOS)
+                            AccountToolbarItem(session: session, placement: .topBarTrailing, localizer: localizer)
+                            #else
+                            AccountToolbarItem(session: session, placement: .automatic, localizer: localizer)
+                            #endif
                         }
-                        .sheet(isPresented: $accountPresented) {
-                            NavigationStack {
-                                Form {
-                                    Text(user.email ?? localizer.string("account.signed_in"))
-                                        .accessibilityIdentifier(.authAccountEmail)
-                                    NavigationLink(localizer.string("auth.title.reset_password")) {
-                                        AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
-                                                 initialScreen: .passwordReset, initialEmail: user.email ?? "",
-                                                 localizer: localizer)
-                                            .navigationTitle(localizer.string("auth.title.reset_password"))
-                                    }
-                                    .accessibilityIdentifier(.authAccountResetPassword)
-                                    .disabled(session.isLoading)
-                                    if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
-                                        Text(localizer.string(errorKey)).foregroundStyle(.red)
-                                    }
-                                    Button(localizer.string("auth.button.sign_out"), role: .destructive) {
-                                        Task {
-                                            await session.signOut()
-                                            if session.state == .unauthenticated { accountPresented = false }
-                                        }
-                                    }.disabled(session.isLoading)
-                                    .accessibilityIdentifier(.authSignOut)
-
-                                    Section {
-                                        Button(localizer.string("auth.button.delete_account"), role: .destructive) {
-                                            showingDeleteConfirmation = true
-                                        }
-                                        .disabled(session.isLoading)
-                                        .accessibilityIdentifier(.authDeleteAccount)
-                                    } footer: {
-                                        Text(localizer.string("account.delete_footer_notice"))
-                                            .font(.footnote)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                .navigationTitle(localizer.string("account.title"))
-                                .toolbar { Button(localizer.string("account.done")) { accountPresented = false } }
-                                .confirmationDialog(
-                                    localizer.string("account.delete_confirmation_title"),
-                                    isPresented: $showingDeleteConfirmation,
-                                    titleVisibility: .visible
-                                ) {
-                                    Button(localizer.string("account.delete_confirmation_action"), role: .destructive) {
-                                        Task {
-                                            await session.deleteAccount()
-                                            if session.state == .unauthenticated {
-                                                accountPresented = false
-                                            }
-                                        }
-                                    }
-                                    Button(localizer.string("common.cancel"), role: .cancel) { }
-                                } message: {
-                                    Text(localizer.string("account.delete_confirmation_message"))
-                                }
-                            }
-                            .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
+                        .sheet(isPresented: $session.isAccountPresented) {
+                            AccountSheetView(
+                                user: user,
+                                session: session,
+                                brand: brand,
+                                configuration: configuration,
+                                localizer: localizer,
+                                onSignedOut: onSignedOut,
+                                isPresented: $session.isAccountPresented
+                            )
                         }
                 }
             }
@@ -183,10 +133,10 @@ private struct ConfiguredAuthGate<Content: View>: View {
         .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
         .task { await session.observeAuthChanges() }
         .onChange(of: session.state) { state in
-            if state == .unauthenticated { accountPresented = false; onSignedOut() }
+            if state == .unauthenticated { session.isAccountPresented = false; onSignedOut() }
         }
         .onChange(of: session.isPasswordRecovery) { recovering in
-            if recovering { accountPresented = false }
+            if recovering { session.isAccountPresented = false }
         }
         .onOpenURL { url in
             guard configuration.accepts(url) else { return }
@@ -198,5 +148,171 @@ private struct ConfiguredAuthGate<Content: View>: View {
     private var authView: some View {
         AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
                  providers: configuration.providers, localizer: localizer)
+    }
+}
+
+/// Top navigation bar toolbar item for displaying and presenting the account sheet.
+public struct AccountToolbarItem: ToolbarContent {
+    @ObservedObject private var session: SessionManager
+    private let localizer: any AuthLocalizing
+    private let placement: ToolbarItemPlacement
+    private let action: (() -> Void)?
+
+    #if os(iOS)
+    public init(session: SessionManager,
+                placement: ToolbarItemPlacement = .topBarTrailing,
+                localizer: (any AuthLocalizing)? = nil,
+                action: (() -> Void)? = nil) {
+        self.session = session
+        self.placement = placement
+        self.localizer = localizer ?? DefaultAuthLocalizer()
+        self.action = action
+    }
+    #else
+    public init(session: SessionManager,
+                placement: ToolbarItemPlacement = .automatic,
+                localizer: (any AuthLocalizing)? = nil,
+                action: (() -> Void)? = nil) {
+        self.session = session
+        self.placement = placement
+        self.localizer = localizer ?? DefaultAuthLocalizer()
+        self.action = action
+    }
+    #endif
+
+    public var body: some ToolbarContent {
+        ToolbarItem(placement: placement) {
+            Button {
+                if let action {
+                    action()
+                } else {
+                    session.showAccount()
+                }
+            } label: {
+                Image(systemName: \.personCropCircle)
+            }
+            .accessibilityLabel(localizer.string("account.title"))
+            .accessibilityIdentifier(.authAccount)
+        }
+    }
+}
+
+/// Standalone account button view with accessibility identifier .authAccount.
+public struct AccountButton: View {
+    @ObservedObject private var session: SessionManager
+    private let localizer: any AuthLocalizing
+    private let action: (() -> Void)?
+
+    public init(session: SessionManager,
+                localizer: (any AuthLocalizing)? = nil,
+                action: (() -> Void)? = nil) {
+        self.session = session
+        self.localizer = localizer ?? DefaultAuthLocalizer()
+        self.action = action
+    }
+
+    public var body: some View {
+        Button {
+            if let action {
+                action()
+            } else {
+                session.showAccount()
+            }
+        } label: {
+            Image(systemName: \.personCropCircle)
+        }
+        .accessibilityLabel(localizer.string("account.title"))
+        .accessibilityIdentifier(.authAccount)
+    }
+}
+
+/// Account profile and settings sheet presented upon account trigger.
+public struct AccountSheetView: View {
+    let user: AuthUser
+    @ObservedObject var session: SessionManager
+    let brand: AuthBrand
+    let configuration: AppAuthConfiguration
+    let localizer: any AuthLocalizing
+    let onSignedOut: () -> Void
+    @Binding var isPresented: Bool
+    @State private var showingDeleteConfirmation = false
+
+    public init(user: AuthUser,
+                session: SessionManager,
+                brand: AuthBrand,
+                configuration: AppAuthConfiguration,
+                localizer: (any AuthLocalizing)? = nil,
+                onSignedOut: @escaping () -> Void = {},
+                isPresented: Binding<Bool>) {
+        self.user = user
+        self.session = session
+        self.brand = brand
+        self.configuration = configuration
+        self.localizer = localizer ?? DefaultAuthLocalizer()
+        self.onSignedOut = onSignedOut
+        self._isPresented = isPresented
+    }
+
+    public var body: some View {
+        NavigationStack {
+            Form {
+                Text(user.email ?? localizer.string("account.signed_in"))
+                    .accessibilityIdentifier(.authAccountEmail)
+                NavigationLink(localizer.string("auth.title.reset_password")) {
+                    AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
+                             initialScreen: .passwordReset, initialEmail: user.email ?? "",
+                             localizer: localizer)
+                        .navigationTitle(localizer.string("auth.title.reset_password"))
+                }
+                .accessibilityIdentifier(.authAccountResetPassword)
+                .disabled(session.isLoading)
+                if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
+                    Text(localizer.string(errorKey)).foregroundStyle(.red)
+                }
+                Button(localizer.string("auth.button.sign_out"), role: .destructive) {
+                    Task {
+                        await session.signOut()
+                        if session.state == .unauthenticated {
+                            isPresented = false
+                            onSignedOut()
+                        }
+                    }
+                }.disabled(session.isLoading)
+                .accessibilityIdentifier(.authSignOut)
+
+                Section {
+                    Button(localizer.string("auth.button.delete_account"), role: .destructive) {
+                        showingDeleteConfirmation = true
+                    }
+                    .disabled(session.isLoading)
+                    .accessibilityIdentifier(.authDeleteAccount)
+                } footer: {
+                    Text(localizer.string("account.delete_footer_notice"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle(localizer.string("account.title"))
+            .toolbar { Button(localizer.string("account.done")) { isPresented = false } }
+            .confirmationDialog(
+                localizer.string("account.delete_confirmation_title"),
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(localizer.string("account.delete_confirmation_action"), role: .destructive) {
+                    Task {
+                        await session.deleteAccount()
+                        if session.state == .unauthenticated {
+                            isPresented = false
+                            onSignedOut()
+                        }
+                    }
+                }
+                Button(localizer.string("common.cancel"), role: .cancel) { }
+            } message: {
+                Text(localizer.string("account.delete_confirmation_message"))
+            }
+        }
+        .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
     }
 }
