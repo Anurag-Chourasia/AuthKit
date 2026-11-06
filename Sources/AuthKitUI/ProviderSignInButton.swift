@@ -6,6 +6,7 @@ import DesignTokensKit
 struct ProviderSignInButton: View {
     let provider: AuthProvider
     let isLoading: Bool
+    var localizer: any AuthLocalizing = DefaultAuthLocalizer()
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .body) private var markSize = 22
@@ -15,7 +16,7 @@ struct ProviderSignInButton: View {
             HStack(spacing: Spacing.twelve) {
                 mark.frame(width: markSize, height: markSize)
                     .accessibilityHidden(true)
-                Text("Continue with \(provider.displayName)")
+                Text(continueWithText)
                     .font(.body.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
@@ -37,6 +38,19 @@ struct ProviderSignInButton: View {
         .opacity(isLoading ? 0.5 : 1)
         .disabled(isLoading)
         .accessibilityIdentifier("auth.provider.\(provider.rawValue)")
+    }
+
+    private var continueWithText: String {
+        let key = "auth.provider.continue_with.\(provider.rawValue)"
+        let localized = localizer.string(key)
+        if localized != key {
+            return localized
+        }
+        let template = localizer.string("auth.provider.continue_with")
+        if template.contains("%@") {
+            return String(format: template, provider.displayName)
+        }
+        return "Continue with \(provider.displayName)"
     }
 
     private var foreground: Color {

@@ -13,11 +13,14 @@ public enum AuthBrand: String, CaseIterable, Sendable {
     var symbol: String {
         switch self { case .myTV: "play.tv"; case .showBook: "books.vertical"; case .motivationDaily: "sun.max" }
     }
-    var subtitle: String {
+    func localizedSubtitle(using localizer: any AuthLocalizing) -> String {
         switch self {
-        case .myTV: "Your channels. Your favourites."
-        case .showBook: "Your next chapter starts here."
-        case .motivationDaily: "A little inspiration, every day."
+        case .myTV:
+            return localizer.string("auth.brand.mytv.subtitle")
+        case .showBook:
+            return localizer.string("auth.brand.showbook.subtitle")
+        case .motivationDaily:
+            return localizer.string("auth.brand.motivation_daily.subtitle")
         }
     }
 }
@@ -76,7 +79,7 @@ public struct AuthView: View {
             VStack(spacing: Spacing.twenty) {
                 Image(systemName: brand.symbol).font(.largeTitle).accessibilityHidden(true)
                 Text(brand.title).font(.largeTitle.bold())
-                Text(brand.subtitle).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text(brand.localizedSubtitle(using: localizer)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 SurfaceCard {
                     VStack(alignment: .leading, spacing: Spacing.sixteen) {
                         Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode.localizedTitle(using: localizer)).font(.title2.bold())
@@ -144,7 +147,7 @@ public struct AuthView: View {
                             .accessibilityHidden(true)
                             VStack(spacing: Spacing.twelve) {
                                 ForEach(providers, id: \.self) { provider in
-                                    ProviderSignInButton(provider: provider, isLoading: session.isLoading) {
+                                    ProviderSignInButton(provider: provider, isLoading: session.isLoading, localizer: localizer) {
                                         password = ""; confirmation = ""
                                         Task { await session.signIn(provider: provider, redirectTo: redirectTo) }
                                     }

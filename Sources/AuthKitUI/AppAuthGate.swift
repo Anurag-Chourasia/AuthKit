@@ -137,10 +137,10 @@ public struct AppAuthGate<Content: View>: View {
         } else {
             VStack(spacing: 16) {
                 Image(systemName: "person.crop.circle.badge.exclamationmark").font(.largeTitle)
-                Text("Sign-in is unavailable").font(.headline)
-                Text("Please try again later.").foregroundStyle(.secondary)
+                Text(localizer.string("auth.unavailable.title")).font(.headline)
+                Text(localizer.string("auth.unavailable.message")).foregroundStyle(.secondary)
                 #if DEBUG
-                Text("Set the Supabase URL, publishable key and callback in the app configuration.")
+                Text(localizer.string("auth.unavailable.debug_configuration"))
                     .font(.caption).multilineTextAlignment(.center)
                 #endif
             }.padding()
