@@ -1,6 +1,7 @@
 import SwiftUI
 import AuthKit
 import DesignTokensKit
+import UIComponentsKit
 
 /// A shared grid keeps provider marks and labels aligned across every row.
 struct ProviderSignInButton: View {
@@ -37,7 +38,7 @@ struct ProviderSignInButton: View {
         }
         .opacity(isLoading ? 0.5 : 1)
         .disabled(isLoading)
-        .accessibilityIdentifier("auth.provider.\(provider.rawValue)")
+        .accessibilityIdentifier(.authProvider(provider.rawValue))
     }
 
     private var continueWithText: String {
@@ -62,7 +63,7 @@ struct ProviderSignInButton: View {
     @ViewBuilder private var mark: some View {
         switch provider {
         case .apple:
-            Image(systemName: "apple.logo").resizable().scaledToFit()
+            Image(systemName: \.appleLogo).resizable().scaledToFit()
         case .google:
             Image("Google", bundle: .module).resizable().scaledToFit()
         case .github:

@@ -1,5 +1,7 @@
 import SwiftUI
 import AuthKit
+import DesignTokensKit
+import UIComponentsKit
 
 public typealias AuthBackendFactory = @Sendable (AppAuthConfiguration) -> any AuthBackend
 
@@ -64,8 +66,8 @@ public struct AppAuthGate<Content: View>: View {
                                localizer: localizer,
                                onSignedOut: onSignedOut, content: content)
         } else {
-            VStack(spacing: 16) {
-                Image(systemName: "person.crop.circle.badge.exclamationmark").font(.largeTitle)
+            VStack(spacing: Spacing.sixteen) {
+                Image(systemName: \.personCropCircleBadgeExclamationmark).font(.largeTitle)
                 Text(localizer.string("auth.unavailable.title")).font(.headline)
                 Text(localizer.string("auth.unavailable.message")).foregroundStyle(.secondary)
                 #if DEBUG
@@ -111,24 +113,24 @@ private struct ConfiguredAuthGate<Content: View>: View {
                     content(user, session).id(user.id)
                         .safeAreaInset(edge: .bottom) {
                             Button { accountPresented = true } label: {
-                                Label(localizer.string("account.title"), systemImage: "person.crop.circle")
-                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                Label(localizer.string("account.title"), systemImage: \.personCropCircle)
+                                    .frame(maxWidth: .infinity, minHeight: TouchTarget.minimum)
                             }
                             .background(.regularMaterial)
-                            .accessibilityIdentifier("auth.account")
+                            .accessibilityIdentifier(.authAccount)
                         }
                         .sheet(isPresented: $accountPresented) {
                             NavigationStack {
                                 Form {
                                     Text(user.email ?? localizer.string("account.signed_in"))
-                                        .accessibilityIdentifier("auth.accountEmail")
+                                        .accessibilityIdentifier(.authAccountEmail)
                                     NavigationLink(localizer.string("auth.title.reset_password")) {
                                         AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,
                                                  initialScreen: .passwordReset, initialEmail: user.email ?? "",
                                                  localizer: localizer)
                                             .navigationTitle(localizer.string("auth.title.reset_password"))
                                     }
-                                    .accessibilityIdentifier("auth.accountResetPassword")
+                                    .accessibilityIdentifier(.authAccountResetPassword)
                                     .disabled(session.isLoading)
                                     if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
                                         Text(localizer.string(errorKey)).foregroundStyle(.red)
@@ -139,14 +141,14 @@ private struct ConfiguredAuthGate<Content: View>: View {
                                             if session.state == .unauthenticated { accountPresented = false }
                                         }
                                     }.disabled(session.isLoading)
-                                    .accessibilityIdentifier("auth.signOut")
+                                    .accessibilityIdentifier(.authSignOut)
 
                                     Section {
                                         Button(localizer.string("auth.button.delete_account"), role: .destructive) {
                                             showingDeleteConfirmation = true
                                         }
                                         .disabled(session.isLoading)
-                                        .accessibilityIdentifier("auth.deleteAccount")
+                                        .accessibilityIdentifier(.authDeleteAccount)
                                     } footer: {
                                         Text(localizer.string("account.delete_footer_notice"))
                                             .font(.footnote)

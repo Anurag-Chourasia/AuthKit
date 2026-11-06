@@ -95,24 +95,24 @@ public struct AuthView: View {
                                 .textInputAutocapitalization(.never)
                                 .keyboardType(.emailAddress)
                                 #endif
-                                .accessibilityIdentifier("auth.email")
+                                .accessibilityIdentifier(.authEmail)
                         }
                         if session.isPasswordRecovery || mode != .forgot {
                             SecureField(localizer.string("auth.field.password"), text: $password)
                                 .textContentType(mode == .login && !session.isPasswordRecovery ? .password : .newPassword)
-                                .accessibilityIdentifier("auth.password")
+                                .accessibilityIdentifier(.authPassword)
                             if mode == .signup || session.isPasswordRecovery {
                                 SecureField(localizer.string("auth.field.confirm_password"), text: $confirmation).textContentType(.newPassword)
-                                    .accessibilityIdentifier("auth.confirmPassword")
+                                    .accessibilityIdentifier(.authConfirmPassword)
                                 Text(localizer.string("auth.instruction.password_requirements"))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
                         if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
-                            Text(localizer.string(errorKey)).foregroundStyle(.red).accessibilityIdentifier("auth.error")
+                            Text(localizer.string(errorKey)).foregroundStyle(.red).accessibilityIdentifier(.authError)
                         }
                         if let noticeKey = session.semanticNotice?.localizationKey ?? session.notice {
-                            Text(localizer.string(noticeKey)).accessibilityIdentifier("auth.notice")
+                            Text(localizer.string(noticeKey)).accessibilityIdentifier(.authNotice)
                         }
                         Button {
                             Task { await submit() }
@@ -127,7 +127,7 @@ public struct AuthView: View {
                         .background(palette.action, in: RoundedRectangle(cornerRadius: CornerRadius.twelve))
                         .opacity(!canSubmit || session.isLoading ? 0.4 : 1)
                         .disabled(!canSubmit || session.isLoading)
-                        .accessibilityIdentifier("auth.submit")
+                        .accessibilityIdentifier(.authSubmit)
                         if session.isLoading { ProgressView(localizer.string("auth.status.please_wait")) }
                     }
                     .textFieldStyle(.roundedBorder)
@@ -135,7 +135,7 @@ public struct AuthView: View {
                 if !session.isPasswordRecovery && initialScreen == .login {
                     if mode == .login {
                         Button(localizer.string("auth.button.forgot_password")) { changeMode(.forgot) }
-                            .accessibilityIdentifier("auth.forgotPassword")
+                            .accessibilityIdentifier(.authForgotPassword)
                             .disabled(session.isLoading)
                         if !providers.isEmpty {
                             HStack(spacing: Spacing.twelve) {
@@ -160,7 +160,7 @@ public struct AuthView: View {
                         changeMode(mode == .login ? .signup : .login)
                     }
                     .disabled(session.isLoading)
-                    .accessibilityIdentifier("auth.switchMode")
+                    .accessibilityIdentifier(.authSwitchMode)
                 }
             }
             .padding(Spacing.twenty)
