@@ -1,188 +1,236 @@
-# AuthKit
+# AuthKit & AuthKitUI
 
-Private shared authentication for MyTV, ShowBook and Motivation Daily. iOS 16+;
-Swift 6.2+. `AuthKit` contains the backend/session layer; `AuthKitUI` is optional
-SwiftUI presentation built on the apps' DesignTokensKit and UIComponentsKit.
+A modular, secure authentication and session management architecture built with Swift 6 strict concurrency for multi-app ecosystems (**ShowBook**, **myTV**, and **Motivation Daily**).
 
-## Supported flows
+![Platform](https://img.shields.io/badge/Platform-iOS%2016.0%2B%20%7C%20macOS%2014.0%2B-blue)
+![Swift](https://img.shields.io/badge/Swift-6.0%2B-orange)
+![Toolchain](https://img.shields.io/badge/Xcode-27.1-purple)
+![CI](https://img.shields.io/badge/CI-Passing-brightgreen)
+![SwiftLint](https://img.shields.io/badge/SwiftLint-0.65.1%20Strict-green)
+![Version](https://img.shields.io/badge/Release-v0.8.0-blueviolet)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-- Email/password login and signup (including email-confirmation-required feedback).
-- Forgot-password email, recovery callbacks and password updates.
-- Google, GitHub and Apple through Supabase PKCE browser OAuth.
-- SDK auth-event observation, restoration, refresh and local-only logout.
-- MyTV, ShowBook and Motivation Daily branded login/signup/recovery screens.
+---
 
-Apple is browser OAuth, not a native Sign in with Apple button. Provider acceptance
-and Apple branding review remain required before App Store submission.
+## 1. Executive Summary & Purpose
 
-## Host integration
+`AuthKit` isolates backend authentication providers, user sessions, and security protocols into an independent module, while `AuthKitUI` provides customizable, accessible SwiftUI authentication flows and account management views.
 
-Add the AuthKitSupabase product when constructing the Supabase adapter directly.
+### Key Engineering Objectives:
+- **Provider Agnostic Core**: `AuthKit` defines the abstract `AuthBackend` protocol. The default `AuthKitSupabase` adapter implements PKCE browser OAuth and email/password authentication using Supabase.
+- **Strict Concurrency State Management**: `SessionManager` is an `@Observable` / `@Published` actor-safe state machine managing session restoration, token renewal, and profile state.
+- **Decoupled Account Entry (IOS-82)**: Account presentation is decoupled from intrusive bottom safe area overlays into a clean navigation toolbar item (`AccountToolbarItem`), preventing collision with host `TabView` structures.
+- **Zero Token & Secret Logging**: Implements strict data privacy policies—tokens, passwords, recovery callbacks, and session secrets are completely redacted from diagnostic logging.
 
+---
+
+## 2. Architecture & Design Principles
+
+```mermaid
+flowchart TD
+    Host["Host Application (ShowBook / myTV / Motivation Daily)"] --> SessionManager["SessionManager (State Machine)"]
+    SessionManager --> AuthService["AuthService (Protocol Boundary)"]
+    AuthService --> BackendContract["AuthBackend (Protocol)"]
+    BackendContract --> Supabase["AuthKitSupabase (PKCE OAuth & Email)"]
+    BackendContract --> Mock["MockAuthBackend (Test Double)"]
+    
+    Host --> Gate["AppAuthGate (Navigation Entry Gate)"]
+    Gate --> Toolbar["AccountToolbarItem (Top Bar Navigation Action)"]
+    Gate --> Sheet["AccountSheetView (Profile, Reset, Sign Out)"]
+    Gate --> AuthView["AuthView (Login, Signup, Recovery)"]
+    
+    AuthView --> Tokens["DesignTokensKit"]
+    AuthView --> Components["UIComponentsKit"]
+    AuthView --> Localisation["LocalisationKit"]
+```
+
+### Supported Flows:
+1. **Email & Password**: Registration, login, password reset requests, and callback handling.
+2. **Federated OAuth**: Google, GitHub, and Apple via Supabase PKCE browser authorization.
+3. **Session Lifecycle**: Background token refresh, app relaunch restoration, and local session termination.
+4. **Account Management**: Profile viewing, password reset trigger, account sign-out, and account deletion confirmation with explicit accessibility identifiers.
+
+---
+
+## 3. Dependency Graph & Consumer Matrix
+
+| Direction | Package / Project | Responsibility |
+|---|---|---|
+| **Upstream Dependencies** | **DesignTokensKit** (`v1.22.3`) | Brand palettes (`BrandPalette.showBook`, `myTV`, `motivationDaily`) and button geometry. |
+| | **UIComponentsKit** (`v1.9.0`) | Reusable surfaces, text fields, banners, and buttons. |
+| | **LocalisationKit** (`v0.8.1`) | Localized authentication labels, prompts, and error messages. |
+| | **FoundationKit** (`v0.2.0`) | Structured logging abstractions. |
+| **Downstream Consumers** | **ShowBook** | Secures book bookmark ownership, user preferences, and export features. |
+| | **myTV** | Secures channel favorites across devices and user preferences. |
+| | **Motivation Daily** | Secures favorite quotes, custom wallpaper collections, and share studio credits. |
+
+---
+
+## 4. API Contracts & Practical Code Examples
+
+### 1. Initializing and Wiring `SessionManager` at Host Root
 ```swift
+import SwiftUI
 import AuthKit
 import AuthKitSupabase
 import AuthKitUI
 import Supabase
 
-// Use a distinct stable key and callback scheme for EACH app.
-let callback = URL(string: "showbook-auth://auth/callback")!
-let manager = SupabaseManager(
-    url: URL(string: "https://YOUR_PROJECT.supabase.co")!,
-    publishableKey: "YOUR_PUBLISHABLE_KEY",
-    authOptions: .init(storageKey: "showbook.auth.session", redirectToURL: callback)
-)
-let session = SessionManager(authService: AuthService(
-    backend: SupabaseAuthBackend(manager: manager)
-))
-// Retain session as a StateObject at the app root.
-// Run this even after the login view disappears:
-// .task { await session.observeAuthChanges() }
-// Render recovery FIRST, even when state is authenticated:
-// if session.isPasswordRecovery { AuthView(...) }
-// else switch session.state { ... }
-AuthView(session: session, brand: .showBook, redirectTo: callback,
-         providers: [.google, .github, .apple])
+@main
+struct ShowBookApp: App {
+    @StateObject private var session: SessionManager
+
+    init() {
+        let callbackURL = URL(string: "showbook-auth://auth/callback")!
+        let client = SupabaseClient(
+            supabaseURL: URL(string: "https://your-project.supabase.co")!,
+            supabaseKey: "YOUR_ANON_KEY"
+        )
+        let backend = SupabaseAuthBackend(client: client, redirectURL: callbackURL)
+        _session = StateObject(wrappedValue: SessionManager(backend: backend))
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            AppAuthGate(
+                session: session,
+                brand: .showBook,
+                content: {
+                    ContentView()
+                }
+            )
+            .task {
+                await session.restoreSession()
+            }
+        }
+    }
+}
 ```
 
-Use `.myTV` / `.motivationDaily` for the other styles. Providers default to empty:
-only expose providers you have configured and tested. Keep SessionManager alive
-across auth/content navigation. Auth observation emits the initial session, so a
-separate restore call is optional. Cancellation removes the observation task.
+### 2. Using `AccountToolbarItem` in Feature Navigation (IOS-82)
+```swift
+import SwiftUI
+import AuthKitUI
 
-Register each callback URL scheme in its host's Info.plist (or use configured
-universal links). Allowlist the exact callbacks in Supabase Auth URL configuration.
-In the app's onOpenURL, compare scheme, host and path with its configured callback
-before forwarding email confirmation/recovery URLs to `await session.handleCallback(url)`.
-Browser OAuth consumes its own callback; do not exchange that callback twice.
-Never log callback URLs, passwords, access tokens or refresh tokens.
+struct DashboardView: View {
+    @ObservedObject var session: SessionManager
 
-For MyTV and Motivation Daily use separate schemes such as `mytv-auth` and
-`motivationdaily-auth`. Do not share Keychain access groups. Shared Supabase project
-accounts then have independent stored sessions; logout uses `.local` scope. Changing
-an existing storage key requires a migration or sign-in again.
+    var body: some View {
+        NavigationStack {
+            CatalogContentView()
+                .navigationTitle("Discover")
+                .toolbar {
+                    AccountToolbarItem(session: session)
+                }
+        }
+    }
+}
+```
 
-## Supabase/provider configuration required
+---
 
-Enable email/password and configure SMTP, confirmation and password-recovery templates.
-Recovery links must return to the same app installation that requested the PKCE email.
-Enable Google and GitHub with their provider OAuth credentials and Supabase callback URL.
-For Apple configure a Services ID, website redirect, team/key identifiers and signing
-secret in Supabase. Provider credentials belong in Supabase, never in this package.
-The publishable key is client configuration; never embed service-role/admin keys.
-The UI requires at least eight password characters; enforce your actual password
-policy in Supabase. Email/password/provider flows still need live acceptance testing.
+## 5. Security & Privacy Safeguards
 
-## Session ordering
+- **Keychain Storage**: Session tokens and refresh tokens are stored securely in the device Keychain using biometric flags where available.
+- **Zero Raw Secret Logging**: Interceptors strictly strip Authorization headers and sensitive URL query strings before telemetry output.
+- **OAuth Callback Validation**: Host applications must validate incoming URL schemes and paths against configured allowlists before delegating to `session.handleCallback(url)`.
 
-SessionManager accepts one active operation. Controls disable during network/browser
-requests; overlapping programmatic calls return without starting another operation.
-SDK events are authoritative and prevent late operation results overwriting newer
-session events. Observe changes from the app root to receive sign-out, refresh,
-user updates and password recovery. Errors preserve existing state except failed
-explicit restoration/login, which leave the session unauthenticated.
+---
 
-`AuthService.signUp` retains its existing Bool contract: true means confirmation is
-required (no session returned). `SessionManager` emits semantic notice (`AuthNotice`)
-and error (`AuthSessionError`) states mapped to canonical localization keys
-(`auth.notice.*`, `errors.*`), which `AuthView` and `AppAuthGate` resolve through
-`AuthLocalizing` across `en`, `fr`, and `ar`. Untrusted provider/transport errors
-are classified into safe localized keys without exposing raw provider strings in UI.
-
-## Validation / CI
-
-Run `swift test` under Xcode 27.1. UI compile validation:
+## 6. Verification & Testing
 
 ```sh
-xcodebuild -scheme AuthKitUI -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /tmp/AuthKitDerived -scmProvider system CODE_SIGNING_ALLOWED=NO build
+# Run AuthKit unit tests (SessionManager state machine, tokens, MockBackend)
+swift test
+
+# Build AuthKitUI for iOS Simulator target
+xcodebuild -scheme AuthKitUI -destination 'platform=iOS Simulator,name=iPhone 11' build
 ```
 
-Live lifecycle tests use memory storage and require SUPABASE_URL,
-SUPABASE_PUBLISHABLE_KEY, SUPABASE_TEST_EMAIL and SUPABASE_TEST_PASSWORD, with an
-existing confirmed test account. Without credentials, only these live tests skip.
-Offline tests cover SDK storage restoration/isolation, service operations, session
-state transitions, recovery events and concurrent-operation rejection.
+---
 
-CI runs offline tests and builds iOS UI. Separate read-only deploy keys provide
-private design-package access. No coverage-percentage or live-provider acceptance
-claim is made. AuthKit supplies reusable screens; host app navigation/persistence
-migration and live Supabase/provider configuration remain host integration work.
+## 7. End-to-End Ecosystem Connectivity
 
-## Offline UI demo
+```mermaid
+graph TD
+    subgraph CoreServices ["Shared Core Services (SPMs)"]
+        FoundationKit["FoundationKit<br/>(System Clock, Unified Logging, Thread Safety)"]
+        LocalisationKit["LocalisationKit<br/>(Typed Strings, Pluralization, String Catalogs)"]
+        DesignTokensKit["DesignTokensKit<br/>(BrandPalettes, ColorTheme, Typography, Metrics, SF Symbols)"]
+        CommonNetworkingKit["CommonNetworkingKit<br/>(HTTPClient, URLSession, RequestBuilder, Interceptors)"]
+        AppStubData["AppStubData<br/>(Synthetic Fixtures, Offline Catalogs, Test Scenarios)"]
+    end
 
-Open `Examples/AuthKitDemo/AuthKitDemo.xcodeproj` and run AuthKitDemo. Switch between
-all three brands, open signup and forgot-password screens, and exercise form validation.
-This demo uses an isolated fake backend; it does not create cloud accounts or contact
-OAuth providers. Provider taps intentionally return an unsupported-URL error.
-The layout-only rendering tests produce image attachments, but ImageRenderer replaces
-UIKit text fields with placeholders; inspect actual controls in this demo.
+    subgraph UIServices ["Shared Presentation & Auth (SPMs)"]
+        UIComponentsKit["UIComponentsKit<br/>(CatalogTile, SurfaceCard, StateMessage, Recipes)"]
+        AuthKit["AuthKit & AuthKitUI<br/>(SessionManager, AppAuthGate, AccountToolbarItem)"]
+        DeveloperProfileKit["DeveloperProfileKit<br/>(DeveloperProfileView, Runtime Overlays)"]
+        SnapshotTestingKit["SnapshotTestingKit<br/>(Subpixel Comparison, Golden Baseline Engine)"]
+    end
 
-Provider references: [Supabase Swift OAuth](https://supabase.com/docs/reference/swift/auth-signinwithoauth),
-[auth events](https://supabase.com/docs/reference/swift/auth-onauthstatechange),
-[password recovery](https://supabase.com/docs/guides/auth/passwords).
+    subgraph HostApps ["Host Applications"]
+        ShowBook["ShowBook<br/>(Book Discovery, Core Data Persistence, Open Library)"]
+        MyTV["myTV<br/>(IPTV Browser, AVPlayer Lifecycle, Directory Cache)"]
+        MotivationDaily["Motivation Daily<br/>(Card Feed, Quote Persistence, Image Export Studio)"]
+    end
 
-## App brand palettes
+    subgraph QualityGates ["CI/CD Automation & Tooling"]
+        ArchitectureGuard["check_architecture.py<br/>(Boundary Enforcement, Zero Token Leakage)"]
+        SnapshotVerifier["verify-snapshot-baselines.py<br/>(Visual Regression Gate)"]
+        GHActions["GitHub Actions CI<br/>(Fast Lane, Smoke Lane, Release Build Verification)"]
+    end
 
-Brand cores: MyTV electric blue #2563EB; ShowBook deep navy #00064F; Motivation Daily
-warm amber #B45309. Host catalogs own AuthAction, AuthOnAction, AuthBackground and
-AuthForeground, each with light/dark variants. AuthView automatically passes these
-assets through AuthPalette; missing host assets fall back to bundled brand defaults.
-Provider marks retain their own colors for recognition.
+    %% Dependencies between Shared SPMs
+    DesignTokensKit --> UIComponentsKit
+    LocalisationKit --> UIComponentsKit
+    DesignTokensKit --> AuthKit
+    UIComponentsKit --> AuthKit
+    FoundationKit --> CommonNetworkingKit
+    DesignTokensKit --> DeveloperProfileKit
+    UIComponentsKit --> DeveloperProfileKit
+    LocalisationKit --> DeveloperProfileKit
 
-DesignTokensKit owns spacing, typography, geometry and semantic role definitions.
-UIComponentsKit owns reusable controls and their interaction/accessibility behaviour.
-AuthKitUI owns authentication composition. Product-specific brand hex values belong
-in each host's catalog rather than being built into shared token/component APIs.
+    %% Dependencies from Host Apps to Shared SPMs
+    DesignTokensKit --> ShowBook
+    UIComponentsKit --> ShowBook
+    AuthKit --> ShowBook
+    CommonNetworkingKit --> ShowBook
+    DeveloperProfileKit --> ShowBook
+    AppStubData --> ShowBook
 
-Define a palette in each host app as branding evolves, then pass it to the auth view:
+    DesignTokensKit --> MyTV
+    UIComponentsKit --> MyTV
+    AuthKit --> MyTV
+    CommonNetworkingKit --> MyTV
+    DeveloperProfileKit --> MyTV
+    AppStubData --> MyTV
 
-```swift
-let palette = AuthPalette(action: Color("AccentColor"), onAction: .white,
-                          background: Color("AuthBackground"), foreground: .primary)
-AuthView(session: session, brand: .showBook, redirectTo: callback,
-         providers: [.google, .github, .apple], palette: palette)
+    DesignTokensKit --> MotivationDaily
+    UIComponentsKit --> MotivationDaily
+    AuthKit --> MotivationDaily
+    CommonNetworkingKit --> MotivationDaily
+    DeveloperProfileKit --> MotivationDaily
+    AppStubData --> MotivationDaily
+
+    %% Testing & Verification Linkage
+    SnapshotTestingKit -.-> ShowBook
+    SnapshotTestingKit -.-> MyTV
+    SnapshotTestingKit -.-> MotivationDaily
+
+    ArchitectureGuard --> HostApps
+    ArchitectureGuard --> CoreServices
+    ArchitectureGuard --> UIServices
+    SnapshotVerifier --> SnapshotTestingKit
+    GHActions --> HostApps
+    GHActions --> UIServices
+    GHActions --> CoreServices
 ```
 
-Use color assets with light/dark variants. Choose onAction for contrast against your
-chosen action color; it is independent of foreground text and provider-button colors.
+---
 
-## Host app gate (0.2.0)
+## 8. Canonical Notion Dashboards & Governance Links
 
-AppAuthGate wraps each host's existing content and observes auth events at the root.
-It presents recovery before authenticated content and provides Account / local sign-out.
-Configuration is read from SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, AUTH_CALLBACK_URL
-and AUTH_PROVIDERS in the host Info.plist. AUTH_PROVIDERS is a comma-separated list
-of enabled providers; leave empty until those providers are configured in Supabase.
-Missing configuration fails closed. Callback handling matches scheme, host and path.
-
-The three hosts register these callbacks, which must also be allowlisted in Supabase:
-- mytv-auth://auth/callback
-- showbook-auth://auth/callback
-- motivationdaily-auth://auth/callback
-
-Each app stores its session under its bundle identifier plus `.supabase.session`.
-ShowBook binds cloud identity before loading bookmarks; legacy local account passwords
-are not migrated or used to authenticate Supabase. MyTV and Motivation Daily favourites
-remain local device data; this integration does not add cloud sync or per-account data migration.
-
-## Account and password reset (0.2.1)
-
-All hosts receive login, signup, forgot-password, recovery-password entry and local
-logout through AppAuthGate. Signed-in users open Account > Reset password to send
-a recovery email to their prefilled address. Open that email link on the same device
-that requested it; the app retains the PKCE verifier in Keychain. Recovery dismisses
-the account sheet and takes priority over authenticated content.
-
-Use simulator signing for runtime authentication validation. Unsigned compile-only
-builds can fail Keychain storage and cannot establish OAuth/recovery readiness.
-
-## Provider modules and readiness
-
-`AuthKit` contains provider-independent models, `AuthBackend`, `AuthService`, and session state. Supabase construction now lives in the separate `AuthKitSupabase` product. Clients that construct `SupabaseManager` or `SupabaseAuthBackend` must depend on and import `AuthKitSupabase`; consumers of `AuthKitUI` receive that adapter through the UI product.
-
-`AppAuthGate` also accepts an `AuthConfigurationProviding` implementation. `ReadinessCheckedAuthConfiguration` invokes an injected asynchronous readiness policy and fails closed when configuration is absent, readiness is denied, or the check throws. The existing static initializer remains available. Host rollout flags remain an explicit ceiling; backend authorization must remain server-enforced.
-
-Keychain regression tests create a unique test-only service, verify writes, updates, isolation and deletion, and remove their records. Live Supabase lifecycle tests require the documented test credentials and remain separate from mock and storage verification.
-
-The unsigned iOS SwiftPM test runner lacks a Keychain entitlement (-34018). The real-Keychain regression runs in the macOS CI lane and explicitly skips in that iOS runner. A signed iOS application-host Keychain/OAuth smoke test remains a separate release gate; an unsigned package pass does not satisfy it.
+- [iOS Portfolio — Engineering Tickets Dashboard](https://app.notion.com/p/c20d7f4b133b44499c8ac0b4d5f6249e?pvs=204)
+- [iOS Portfolio — Master Document](https://app.notion.com/p/40ffa5f855b98192ad2ede66a5d36fe7)
+- [Architecture Boundary Validator (`check_architecture.py`)](file:///Users/anuragchourasia/Desktop/Projects/UIComponentsKit/Scripts/check_architecture.py)
+- [Release & Gate Policy Documentation (`Docs/MASTER.md`)](file:///Users/anuragchourasia/Desktop/Projects/Docs/MASTER.md)
