@@ -1,4 +1,5 @@
 import SwiftUI
+import DesignTokensKit
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -37,15 +38,16 @@ public struct AuthPalette: Sendable {
     }
 
     public static func projectDefault(for brand: AuthBrand) -> AuthPalette {
-        let prefix: String
+        let appBrand: AppBrand
         switch brand {
-        case .myTV: prefix = "MyTV"
-        case .showBook: prefix = "ShowBook"
-        case .motivationDaily: prefix = "MotivationDaily"
+        case .myTV: appBrand = .myTV
+        case .showBook: appBrand = .showBook
+        case .motivationDaily: appBrand = .motivationDaily
         }
-        return .init(action: Color(prefix + "AuthAction", bundle: .module),
-                     onAction: Color(prefix + "AuthOnAction", bundle: .module),
-                     background: Color(prefix + "AuthBackground", bundle: .module),
-                     foreground: Color(prefix + "AuthForeground", bundle: .module))
+        let palette = BrandPalette.palette(for: appBrand)
+        return .init(action: palette.authAction,
+                     onAction: palette.authOnAction,
+                     background: palette.authBackground,
+                     foreground: palette.authForeground)
     }
 }

@@ -12,7 +12,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/supabase/supabase-swift.git", exact: "2.55.6"),
         .package(url: "https://github.com/Anurag-Chourasia/UIComponentsKit.git", "1.3.0"..<"2.0.0"),
-        .package(url: "https://github.com/Anurag-Chourasia/DesignTokensKit.git", "1.3.0"..<"2.0.0")
+        .package(url: "https://github.com/Anurag-Chourasia/DesignTokensKit.git", "1.20.0"..<"2.0.0")
     ],
     targets: [
         .target(name: "AuthKit"),
