@@ -6,19 +6,45 @@ import UIKit
 import AppKit
 #endif
 
-/// Apps own brand values. Shared kits own roles, scales and component behaviour.
+/// Apps own brand values. DesignTokensKit owns canonical palettes and roles.
+///
+/// Deprecated: Use `BrandPalette` from `DesignTokensKit` directly.
+@available(*, deprecated, message: "Use BrandPalette from DesignTokensKit instead.")
 public struct AuthPalette: Sendable {
     public var action: Color
     public var onAction: Color
     public var background: Color
     public var foreground: Color
 
-    public init(action: Color, onAction: Color = .white,
-                background: Color = .clear, foreground: Color = .primary) {
+    public init(
+        action: Color,
+        onAction: Color = .white,
+        background: Color = .clear,
+        foreground: Color = .primary
+    ) {
         self.action = action
         self.onAction = onAction
         self.background = background
         self.foreground = foreground
+    }
+
+    public var brandPalette: BrandPalette {
+        BrandPalette(
+            action: action,
+            onAction: onAction,
+            background: background,
+            surface: background,
+            border: .clear,
+            text: foreground,
+            mutedText: foreground.opacity(0.6),
+            error: .red,
+            warning: .orange,
+            success: .green,
+            authAction: action,
+            authOnAction: onAction,
+            authBackground: background,
+            authForeground: foreground
+        )
     }
 
     /// Resolve host-owned semantic assets; absent roles fall back individually.
@@ -31,23 +57,21 @@ public struct AuthPalette: Sendable {
             #endif
             return Color(name, bundle: bundle)
         }
-        return .init(action: color("AuthAction", fallback: fallback.action),
-                     onAction: color("AuthOnAction", fallback: fallback.onAction),
-                     background: color("AuthBackground", fallback: fallback.background),
-                     foreground: color("AuthForeground", fallback: fallback.foreground))
+        return .init(
+            action: color("AuthAction", fallback: fallback.action),
+            onAction: color("AuthOnAction", fallback: fallback.onAction),
+            background: color("AuthBackground", fallback: fallback.background),
+            foreground: color("AuthForeground", fallback: fallback.foreground)
+        )
     }
 
     public static func projectDefault(for brand: AuthBrand) -> AuthPalette {
-        let appBrand: AppBrand
-        switch brand {
-        case .myTV: appBrand = .myTV
-        case .showBook: appBrand = .showBook
-        case .motivationDaily: appBrand = .motivationDaily
-        }
-        let palette = BrandPalette.palette(for: appBrand)
-        return .init(action: palette.authAction,
-                     onAction: palette.authOnAction,
-                     background: palette.authBackground,
-                     foreground: palette.authForeground)
+        let palette = BrandPalette.palette(for: brand.appBrand)
+        return .init(
+            action: palette.authAction,
+            onAction: palette.authOnAction,
+            background: palette.authBackground,
+            foreground: palette.authForeground
+        )
     }
 }

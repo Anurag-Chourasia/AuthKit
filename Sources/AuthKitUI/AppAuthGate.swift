@@ -66,7 +66,7 @@ public struct AppAuthGate<Content: View>: View {
                                localizer: localizer,
                                onSignedOut: onSignedOut, content: content)
         } else {
-            VStack(spacing: Spacing.sixteen) {
+            VStack(spacing: \.sixteen) {
                 Image(systemName: \.personCropCircleBadgeExclamationmark).font(.largeTitle)
                 Text(localizer.string("auth.unavailable.title")).font(.headline)
                 Text(localizer.string("auth.unavailable.message")).foregroundStyle(.secondary)

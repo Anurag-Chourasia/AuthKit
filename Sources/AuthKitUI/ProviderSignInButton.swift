@@ -14,7 +14,7 @@ struct ProviderSignInButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Spacing.twelve) {
+            HStack(spacing: \.twelve) {
                 mark.frame(width: markSize, height: markSize)
                     .accessibilityHidden(true)
                 Text(continueWithText)
@@ -24,19 +24,20 @@ struct ProviderSignInButton: View {
                 Color.clear.frame(width: markSize, height: markSize)
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, Spacing.sixteen)
-            .padding(.vertical, Spacing.twelve)
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .padding(.horizontal, \.sixteen)
+            .padding(.vertical, \.twelve)
+            .frame(minHeight: \.touchTargetSpacious)
+            .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(foreground)
-        .background(background, in: RoundedRectangle(cornerRadius: CornerRadius.twelve))
+        .background(background, in: RoundedRectangle(cornerRadius: \.cardRadius))
         .overlay {
-            RoundedRectangle(cornerRadius: CornerRadius.twelve)
-                .strokeBorder(Color.primary.opacity(0.18), lineWidth: StrokeWidth.one)
+            RoundedRectangle(cornerRadius: \.cardRadius)
+                .strokeBorder(Color.primary.opacity(\.p0_18), lineWidth: StrokeWidth.one)
         }
-        .opacity(isLoading ? 0.5 : 1)
+        .opacity(isLoading ? \.p0_5 : \.p1_0)
         .disabled(isLoading)
         .accessibilityIdentifier(.authProvider(provider.rawValue))
     }

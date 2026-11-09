@@ -13,6 +13,16 @@ public enum AuthBrand: String, CaseIterable, Sendable {
     var symbol: String {
         switch self { case .myTV: "play.tv"; case .showBook: "books.vertical"; case .motivationDaily: "sun.max" }
     }
+    public var appBrand: AppBrand {
+        switch self {
+        case .myTV: return .myTV
+        case .showBook: return .showBook
+        case .motivationDaily: return .motivationDaily
+        }
+    }
+    public var palette: BrandPalette {
+        BrandPalette.palette(for: appBrand)
+    }
     func localizedSubtitle(using localizer: any AuthLocalizing) -> String {
         switch self {
         case .myTV:
@@ -31,7 +41,7 @@ public enum AuthScreen: Sendable { case login, passwordReset }
 public struct AuthView: View {
     @ObservedObject private var session: SessionManager
     private let brand: AuthBrand
-    private let palette: AuthPalette
+    private let palette: BrandPalette
     private let redirectTo: URL
     private let providers: [AuthProvider]
     private let initialScreen: AuthScreen
@@ -53,10 +63,10 @@ public struct AuthView: View {
     }
 
     public init(session: SessionManager, brand: AuthBrand, redirectTo: URL,
-                providers: [AuthProvider] = [], palette: AuthPalette? = nil,
+                providers: [AuthProvider] = [], palette: BrandPalette? = nil,
                 initialScreen: AuthScreen = .login, initialEmail: String = "",
                 localizer: (any AuthLocalizing)? = nil) {
-        self.palette = palette ?? .appAssets(fallback: .projectDefault(for: brand))
+        self.palette = palette ?? brand.palette
         self.session = session; self.brand = brand; self.redirectTo = redirectTo; self.providers = providers
         self.initialScreen = initialScreen
         self.localizer = localizer ?? DefaultAuthLocalizer()
@@ -64,24 +74,51 @@ public struct AuthView: View {
         _email = State(initialValue: initialEmail)
     }
 
+    @available(*, deprecated, message: "Use init with BrandPalette instead of AuthPalette.")
+    public init(session: SessionManager, brand: AuthBrand, redirectTo: URL,
+                providers: [AuthProvider] = [], palette: AuthPalette,
+                initialScreen: AuthScreen = .login, initialEmail: String = "",
+                localizer: (any AuthLocalizing)? = nil) {
+        self.init(
+            session: session,
+            brand: brand,
+            redirectTo: redirectTo,
+            providers: providers,
+            palette: palette.brandPalette,
+            initialScreen: initialScreen,
+            initialEmail: initialEmail,
+            localizer: localizer
+        )
+    }
+
     public var body: some View {
         ScrollView { formContent }
-            .foregroundStyle(palette.foreground)
-            .background(palette.background)
-            .tint(palette.action)
+            .foregroundStyle(palette.authForeground)
+            .background(palette.authBackground)
+            .tint(palette.authAction)
             .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
             .onChange(of: session.isPasswordRecovery) { _, _ in password = ""; confirmation = "" }
             .onDisappear { password = ""; confirmation = "" }
     }
 
+    private var submitTitle: String {
+        if session.isPasswordRecovery {
+            return localizer.string("auth.title.choose_new_password")
+        }
+        if mode == .forgot {
+            return localizer.string("auth.title.reset_password")
+        }
+        return mode.localizedTitle(using: localizer)
+    }
+
     // Renderable content is separate from the platform-backed scrolling container.
     var formContent: some View {
-            VStack(spacing: Spacing.twenty) {
+            VStack(spacing: \.twenty) {
                 Image(systemName: brand.symbol).font(.largeTitle).accessibilityHidden(true)
                 Text(brand.title).font(.largeTitle.bold())
                 Text(brand.localizedSubtitle(using: localizer)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 SurfaceCard {
-                    VStack(alignment: .leading, spacing: Spacing.sixteen) {
+                    VStack(alignment: .leading, spacing: \.sixteen) {
                         Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode.localizedTitle(using: localizer)).font(.title2.bold())
                         if !session.isPasswordRecovery {
                             if mode == .forgot {
@@ -117,15 +154,16 @@ public struct AuthView: View {
                         Button {
                             Task { await submit() }
                         } label: {
-                            Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode == .forgot ? localizer.string("auth.title.reset_password") : mode.localizedTitle(using: localizer))
+                            Text(submitTitle)
                                 .font(.headline)
-                                .frame(maxWidth: .infinity, minHeight: 52)
+                                .frame(minHeight: \.touchTargetSpacious)
+                                .frame(maxWidth: .infinity)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(palette.onAction)
-                        .background(palette.action, in: RoundedRectangle(cornerRadius: CornerRadius.twelve))
-                        .opacity(!canSubmit || session.isLoading ? 0.4 : 1)
+                        .foregroundStyle(palette.authOnAction)
+                        .background(palette.authAction, in: RoundedRectangle(cornerRadius: \.cardRadius))
+                        .opacity(!canSubmit || session.isLoading ? \.p0_4 : \.p1_0)
                         .disabled(!canSubmit || session.isLoading)
                         .accessibilityIdentifier(.authSubmit)
                         if session.isLoading { ProgressView(localizer.string("auth.status.please_wait")) }
@@ -138,14 +176,14 @@ public struct AuthView: View {
                             .accessibilityIdentifier(.authForgotPassword)
                             .disabled(session.isLoading)
                         if !providers.isEmpty {
-                            HStack(spacing: Spacing.twelve) {
-                                Rectangle().frame(height: StrokeWidth.one)
+                            HStack(spacing: \.twelve) {
+                                Rectangle().frame(height: \.p1)
                                 Text(localizer.string("auth.or_continue_with")).font(.caption).fixedSize()
-                                Rectangle().frame(height: StrokeWidth.one)
+                                Rectangle().frame(height: \.p1)
                             }
                             .foregroundStyle(.secondary)
                             .accessibilityHidden(true)
-                            VStack(spacing: Spacing.twelve) {
+                            VStack(spacing: \.twelve) {
                                 ForEach(providers, id: \.self) { provider in
                                     ProviderSignInButton(provider: provider, isLoading: session.isLoading, localizer: localizer) {
                                         password = ""; confirmation = ""
@@ -153,7 +191,7 @@ public struct AuthView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, Spacing.sixteen)
+                            .padding(.horizontal, \.sixteen)
                         }
                     }
                     Button(mode == .login ? localizer.string("auth.button.create_an_account") : localizer.string("auth.button.back_to_sign_in")) {
@@ -163,10 +201,10 @@ public struct AuthView: View {
                     .accessibilityIdentifier(.authSwitchMode)
                 }
             }
-            .padding(Spacing.twenty)
+            .padding(\.twenty)
             .frame(maxWidth: 520)
             .frame(maxWidth: .infinity)
-            .tint(palette.action)
+            .tint(palette.authAction)
     }
 
     private var canSubmit: Bool {
