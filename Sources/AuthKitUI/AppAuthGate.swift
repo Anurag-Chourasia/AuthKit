@@ -132,10 +132,10 @@ private struct ConfiguredAuthGate<Content: View>: View {
         }
         .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
         .task { await session.observeAuthChanges() }
-        .onChange(of: session.state) { _, state in
+        .onAuthValueChange(of: session.state) { state in
             if state == .unauthenticated { session.isAccountPresented = false; onSignedOut() }
         }
-        .onChange(of: session.isPasswordRecovery) { _, recovering in
+        .onAuthValueChange(of: session.isPasswordRecovery) { recovering in
             if recovering { session.isAccountPresented = false }
         }
         .onOpenURL { url in

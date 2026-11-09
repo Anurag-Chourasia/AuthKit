@@ -97,7 +97,7 @@ public struct AuthView: View {
             .background(palette.authBackground)
             .tint(palette.authAction)
             .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
-            .onChange(of: session.isPasswordRecovery) { _, _ in password = ""; confirmation = "" }
+            .onAuthValueChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
             .onDisappear { password = ""; confirmation = "" }
     }
 
@@ -227,6 +227,21 @@ public struct AuthView: View {
         case .login: await session.signIn(email: address, password: secret)
         case .signup: await session.signUp(email: address, password: secret)
         case .forgot: await session.requestPasswordReset(email: address, redirectTo: redirectTo)
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func onAuthValueChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
+        if #available(iOS 17.0, macOS 14.0, *) {
+            self.onChange(of: value) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            self.onChange(of: value) { newValue in
+                action(newValue)
+            }
         }
     }
 }
