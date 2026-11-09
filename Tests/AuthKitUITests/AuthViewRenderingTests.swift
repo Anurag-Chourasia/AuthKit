@@ -31,7 +31,6 @@ final class AuthViewRenderingTests: XCTestCase {
                 .frame(width: 414)
                 .background(Color.white)
             // Layout-only evidence: ImageRenderer substitutes placeholders for UIKit text inputs.
-            // Use Examples/AuthKitDemo to inspect and interact with the actual fields.
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2
             let image = try XCTUnwrap(renderer.uiImage)
