@@ -6,7 +6,7 @@ public enum SupabaseBackendFactory {
     public static func make(projectURL: URL, publishableKey: String, callbackURL: URL,
                             storageKey: String) -> any AuthBackend {
         let manager = SupabaseManager(url: projectURL, publishableKey: publishableKey,
-            authOptions: .init(redirectToURL: callbackURL, storageKey: storageKey))
+            authOptions: .init(redirectToURL: callbackURL, storageKey: storageKey, emitLocalSessionAsInitialSession: true))
         return SupabaseAuthBackend(manager: manager)
     }
 
