@@ -5,7 +5,6 @@
 //  Created by Anurag Chourasia on 31/10/26.
 //
 
-
 import Foundation
 import AuthKit
 import Supabase
@@ -16,6 +15,10 @@ public actor SupabaseAuthBackend: AuthBackend {
 
     public init(manager: SupabaseManager) {
         self.client = manager.client
+    }
+
+    public init(client: SupabaseClient) {
+        self.client = client
     }
 
     public func signIn(

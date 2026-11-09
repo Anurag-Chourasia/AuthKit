@@ -195,4 +195,39 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(failing.errorMessage, "errors.invalid_credentials")
     }
 
+    @MainActor
+    func testAccountPresentationToggles() {
+        let sut = SessionManager(authService: AuthService(backend: MockAuthBackend()))
+        XCTAssertFalse(sut.isAccountPresented)
+        sut.showAccount()
+        XCTAssertTrue(sut.isAccountPresented)
+        sut.hideAccount()
+        XCTAssertFalse(sut.isAccountPresented)
+    }
+
+    @MainActor
+    func testNetworkErrorSemanticMapping() async {
+        let failing = SessionManager(authService: AuthService(backend: NetworkFailingBackend()))
+        await failing.signIn(email: "a@b.com", password: "pwd")
+        XCTAssertEqual(sutSemanticError(failing), .networkUnreachable)
+    }
+
+    @MainActor
+    private func sutSemanticError(_ sut: SessionManager) -> AuthSessionError? {
+        sut.semanticError
+    }
+}
+
+private actor NetworkFailingBackend: AuthBackend {
+    func currentUser() async throws -> AuthUser? { throw URLError(.notConnectedToInternet) }
+    func events() async -> AsyncStream<AuthSessionEvent> { AsyncStream { $0.finish() } }
+    func signIn(email: String, password: String) async throws -> AuthUser { throw URLError(.networkConnectionLost) }
+    func signUp(email: String, password: String) async throws -> Bool { throw URLError(.notConnectedToInternet) }
+    func signOut() async throws { throw URLError(.notConnectedToInternet) }
+    func refreshSession() async throws { throw URLError(.notConnectedToInternet) }
+    func requestPasswordReset(email: String, redirectTo: URL) async throws { throw URLError(.notConnectedToInternet) }
+    func updatePassword(_ password: String) async throws { throw URLError(.notConnectedToInternet) }
+    func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser { throw URLError(.notConnectedToInternet) }
+    func handleCallback(_ url: URL) async throws -> AuthUser { throw URLError(.notConnectedToInternet) }
+    func deleteAccount() async throws { throw URLError(.notConnectedToInternet) }
 }

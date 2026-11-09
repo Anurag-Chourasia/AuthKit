@@ -100,7 +100,6 @@ final class AuthServiceTests: XCTestCase {
         }
     }
 
-
     func testSignUpFailure() async {
         // Given
         let backend = MockAuthBackend(shouldFail: true)

@@ -84,9 +84,7 @@ public final class SessionManager: ObservableObject {
         semanticNotice = nil
         notice = nil
         defer { isLoading = false }
-        do { try await operation() }
-        catch is CancellationError { }
-        catch {
+        do { try await operation() } catch is CancellationError { } catch {
             let mapped = Self.classify(error, defaultError: defaultError)
             semanticError = mapped
             errorMessage = mapped.localizationKey

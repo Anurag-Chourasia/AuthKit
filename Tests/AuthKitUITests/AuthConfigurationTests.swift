@@ -23,8 +23,7 @@ final class AuthConfigurationTests: XCTestCase {
         XCTAssertEqual(resolved?.storageKey, "test.session")
         XCTAssertNil(absent)
         let failed = ReadinessCheckedAuthConfiguration(configuration: candidate, isReady: { throw URLError(.notConnectedToInternet) })
-        do { _ = try await failed.configuration(); XCTFail("Expected readiness error") }
-        catch { XCTAssertEqual((error as? URLError)?.code, .notConnectedToInternet) }
+        do { _ = try await failed.configuration(); XCTFail("Expected readiness error") } catch { XCTAssertEqual((error as? URLError)?.code, .notConnectedToInternet) }
     }
 
     func testOnlyExpectedCallbackEndpointIsAccepted() throws {
@@ -100,6 +99,73 @@ final class AuthConfigurationTests: XCTestCase {
         XCTAssertEqual(customLocalizer.string("auth.title.sign_in"), "تسجيل الدخول")
         XCTAssertEqual(customLocalizer.string("auth.field.email"), "Email")
     }
+
+    func testFromBundleResolutionAndFallback() throws {
+        let bundleURL = FileManager.default.temporaryDirectory.appendingPathComponent("MockApp_\(UUID().uuidString).bundle")
+        try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
+
+        let plistData = Data("""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleIdentifier</key>
+            <string>com.example.mockapp</string>
+            <key>SUPABASE_URL</key>
+            <string>https://example.supabase.co</string>
+            <key>SUPABASE_PUBLISHABLE_KEY</key>
+            <string>mock-pub-key</string>
+            <key>AUTH_CALLBACK_URL</key>
+            <string>mockapp://auth/callback</string>
+            <key>AUTH_PROVIDERS</key>
+            <string>google, github, apple</string>
+            <key>SUPABASE_STAGING_URL</key>
+            <string>https://staging.supabase.co</string>
+            <key>SUPABASE_STAGING_PUBLISHABLE_KEY</key>
+            <string>mock-staging-key</string>
+        </dict>
+        </plist>
+        """.utf8)
+
+        let plistURL = bundleURL.appendingPathComponent("Info.plist")
+        try plistData.write(to: plistURL)
+
+        guard let bundle = Bundle(url: bundleURL) else {
+            XCTFail("Failed to load bundle at \(bundleURL)")
+            return
+        }
+
+        let prodConfig = AppAuthConfiguration.fromBundle(bundle, environment: .production)
+        XCTAssertNotNil(prodConfig)
+        XCTAssertEqual(prodConfig?.projectURL.absoluteString, "https://example.supabase.co")
+        XCTAssertEqual(prodConfig?.publishableKey, "mock-pub-key")
+        XCTAssertEqual(prodConfig?.storageKey, "com.example.mockapp.supabase.session")
+        XCTAssertEqual(prodConfig?.providers, [.google, .github, .apple])
+
+        let stagingConfig = AppAuthConfiguration.fromBundle(bundle, environment: .staging)
+        XCTAssertNotNil(stagingConfig)
+        XCTAssertEqual(stagingConfig?.projectURL.absoluteString, "https://staging.supabase.co")
+        XCTAssertEqual(stagingConfig?.publishableKey, "mock-staging-key")
+        XCTAssertEqual(stagingConfig?.storageKey, "com.example.mockapp.supabase.staging.session")
+
+        // Incomplete bundle returns nil
+        let emptyBundleURL = FileManager.default.temporaryDirectory.appendingPathComponent("Empty_\(UUID().uuidString).bundle")
+        try FileManager.default.createDirectory(at: emptyBundleURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: emptyBundleURL) }
+        let emptyBundle = Bundle(url: emptyBundleURL)
+        XCTAssertNil(emptyBundle.flatMap { AppAuthConfiguration.fromBundle($0) })
+    }
+
+    func testAuthProvidersAndEnvironment() {
+        XCTAssertEqual(AuthProvider.google.displayName, "Google")
+        XCTAssertEqual(AuthProvider.github.displayName, "GitHub")
+        XCTAssertEqual(AuthProvider.apple.displayName, "Apple")
+        XCTAssertEqual(AuthEnvironment.allCases.count, 2)
+
+        let event = AuthSessionEvent(user: nil, isPasswordRecovery: true)
+        XCTAssertTrue(event.isPasswordRecovery)
+    }
 }
 
 private actor FakeAuthBackend: AuthBackend {
@@ -115,4 +181,3 @@ private actor FakeAuthBackend: AuthBackend {
     func handleCallback(_ url: URL) async throws -> AuthUser { AuthUser(id: UUID(), email: nil) }
     func deleteAccount() async throws { }
 }
-

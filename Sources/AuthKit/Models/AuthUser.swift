@@ -5,7 +5,6 @@
 //  Created by Anurag Chourasia on 31/10/26.
 //
 
-
 import Foundation
 
 public struct AuthUser: Identifiable, Equatable, Sendable {

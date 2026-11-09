@@ -16,12 +16,13 @@ public final class SupabaseManager: Sendable {
     public init(
         url: URL,
         publishableKey: String,
-        authOptions: SupabaseClientOptions.AuthOptions = .init()
+        authOptions: SupabaseClientOptions.AuthOptions = .init(),
+        globalOptions: SupabaseClientOptions.GlobalOptions = .init()
     ) {
         self.client = SupabaseClient(
             supabaseURL: url,
             supabaseKey: publishableKey,
-            options: SupabaseClientOptions(auth: authOptions)
+            options: SupabaseClientOptions(auth: authOptions, global: globalOptions)
         )
     }
 }
