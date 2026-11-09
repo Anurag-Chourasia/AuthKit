@@ -12,13 +12,30 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/supabase/supabase-swift.git", exact: "2.55.6"),
         .package(url: "https://github.com/Anurag-Chourasia/UIComponentsKit.git", "1.3.0"..<"2.0.0"),
-        .package(url: "https://github.com/Anurag-Chourasia/DesignTokensKit.git", "1.20.0"..<"2.0.0")
+        .package(url: "https://github.com/Anurag-Chourasia/DesignTokensKit.git", "1.20.0"..<"2.0.0"),
+        .package(url: "https://github.com/Anurag-Chourasia/LocalizationKit.git", "0.9.0"..<"1.0.0")
     ],
     targets: [
         .target(name: "AuthKit"),
         .target(name: "AuthKitSupabase", dependencies: ["AuthKit", .product(name: "Supabase", package: "supabase-swift")]),
-        .target(name: "AuthKitUI", dependencies: ["AuthKit", "UIComponentsKit", "DesignTokensKit"], resources: [.process("Resources")]),
+        .target(
+            name: "AuthKitUI",
+            dependencies: [
+                "AuthKit",
+                "UIComponentsKit",
+                "DesignTokensKit",
+                .product(name: "LocalizationKit", package: "LocalizationKit")
+            ],
+            resources: [.process("Resources")]
+        ),
         .testTarget(name: "AuthKitTests", dependencies: ["AuthKit", "AuthKitSupabase", .product(name: "Supabase", package: "supabase-swift")]),
-        .testTarget(name: "AuthKitUITests", dependencies: ["AuthKitUI", "AuthKit"])
+        .testTarget(
+            name: "AuthKitUITests",
+            dependencies: [
+                "AuthKitUI",
+                "AuthKit",
+                .product(name: "LocalizationKit", package: "LocalizationKit")
+            ]
+        )
     ]
 )

@@ -70,7 +70,7 @@ public struct AuthView: View {
             .background(palette.background)
             .tint(palette.action)
             .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
-            .onChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
+            .onChange(of: session.isPasswordRecovery) { _, _ in password = ""; confirmation = "" }
             .onDisappear { password = ""; confirmation = "" }
     }
 

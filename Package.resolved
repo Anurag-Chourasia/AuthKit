@@ -1,5 +1,5 @@
 {
-  "originHash" : "215fc84d17263ac9ae9c3d7a0b7dcc21ec0b9bd690e2b2b5a31d95ea66bfbc30",
+  "originHash" : "974dd1dcc1b53fdfd2feabaa79399cd2a17d8fa36aa8ad91db9b3ede821ca2f5",
   "pins" : [
     {
       "identity" : "designtokenskit",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "aee20551c96f11ba1ac59a3c6936ae0b994c5db2",
         "version" : "1.21.0"
+      }
+    },
+    {
+      "identity" : "localizationkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Anurag-Chourasia/LocalizationKit.git",
+      "state" : {
+        "revision" : "512643407c2018fb695360269d816f12362bfb49",
+        "version" : "0.9.0"
       }
     },
     {

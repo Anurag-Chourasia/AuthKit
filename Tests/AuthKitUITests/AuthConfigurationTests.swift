@@ -77,6 +77,29 @@ final class AuthConfigurationTests: XCTestCase {
         }
         XCTAssertNotNil(gate)
     }
+
+    func testDefaultAuthLocalizerIntegratesLocalizationKit() {
+        let localizer = DefaultAuthLocalizer()
+        // Resolves via LocalizationKit
+        XCTAssertEqual(localizer.string("auth.title.sign_in"), "Sign in")
+        XCTAssertEqual(localizer.string("auth.field.email"), "Email")
+        XCTAssertEqual(localizer.string("auth.field.password"), "Password")
+        XCTAssertEqual(localizer.string("account.title"), "Account")
+        XCTAssertEqual(localizer.string("common.cancel"), "Cancel")
+
+        // KeyPath helper
+        XCTAssertEqual(localizer.string(\.authTitleSignIn), "Sign in")
+        XCTAssertEqual(localizer.string(\.authFieldEmail), "Email")
+
+        // Custom string override
+        let customLocalizer = DefaultAuthLocalizer(
+            isRightToLeft: true,
+            customStrings: ["auth.title.sign_in": "تسجيل الدخول"]
+        )
+        XCTAssertTrue(customLocalizer.isRightToLeft)
+        XCTAssertEqual(customLocalizer.string("auth.title.sign_in"), "تسجيل الدخول")
+        XCTAssertEqual(customLocalizer.string("auth.field.email"), "Email")
+    }
 }
 
 private actor FakeAuthBackend: AuthBackend {
