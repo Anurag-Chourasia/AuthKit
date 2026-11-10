@@ -23,7 +23,7 @@ jobs:
             const eventAction = context.payload.action;
 
             // Dynamically load owners from .github/CODEOWNERS
-            let ownersDisplayList = ['@Anurag-Chourasia', '@Anurag-Chourasia-iOS', '@Sudeepa88'];
+            let ownersDisplayList = ['@Anurag-Chourasia', '@Anurag-Chourasia-iOS'];
             let owners = ownersDisplayList.map(h => h.replace('@', '').toLowerCase());
 
             try {
