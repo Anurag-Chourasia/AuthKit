@@ -53,4 +53,30 @@ final class AuthUserTests: XCTestCase {
 
         XCTAssertNil(user.email)
     }
+
+    func testUserSupportsNameAndPhone() {
+        let user = AuthUser(
+            id: UUID(),
+            email: "john@example.com",
+            firstName: "John",
+            lastName: "Doe",
+            phone: "+1234567890"
+        )
+
+        XCTAssertEqual(user.firstName, "John")
+        XCTAssertEqual(user.lastName, "Doe")
+        XCTAssertEqual(user.phone, "+1234567890")
+        XCTAssertEqual(user.fullName, "John Doe")
+    }
+
+    func testFullNameFallsBackWhenOnlyOneNamePresent() {
+        let onlyFirst = AuthUser(id: UUID(), email: nil, firstName: "Alice")
+        XCTAssertEqual(onlyFirst.fullName, "Alice")
+
+        let onlyLast = AuthUser(id: UUID(), email: nil, lastName: "Smith")
+        XCTAssertEqual(onlyLast.fullName, "Smith")
+
+        let emptyNames = AuthUser(id: UUID(), email: nil, firstName: "", lastName: "")
+        XCTAssertNil(emptyNames.fullName)
+    }
 }

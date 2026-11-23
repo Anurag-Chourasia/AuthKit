@@ -47,13 +47,8 @@ public final class SessionManager: ObservableObject {
     public init(authService: AuthService) { self.authService = authService }
     deinit { observation?.cancel() }
 
-    public func showAccount() {
-        isAccountPresented = true
-    }
-
-    public func hideAccount() {
-        isAccountPresented = false
-    }
+    public func showAccount() { isAccountPresented = true }
+    public func hideAccount() { isAccountPresented = false }
 
     /// Call from the host's root `.task`. Cancellation tears down the SDK listener.
     public func observeAuthChanges() async {
@@ -78,29 +73,23 @@ public final class SessionManager: ObservableObject {
         _ operation: () async throws -> Void
     ) async {
         guard !isLoading else { return }
-        isLoading = true
-        semanticError = nil
-        errorMessage = nil
-        semanticNotice = nil
-        notice = nil
+        isLoading = true; semanticError = nil; errorMessage = nil; semanticNotice = nil; notice = nil
         defer { isLoading = false }
         do { try await operation() } catch is CancellationError { } catch {
             let mapped = Self.classify(error, defaultError: defaultError)
-            semanticError = mapped
-            errorMessage = mapped.localizationKey
+            semanticError = mapped; errorMessage = mapped.localizationKey
         }
     }
 
     private static func classify(_ error: Error, defaultError: AuthSessionError) -> AuthSessionError {
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
-                return .networkUnreachable
-            default:
-                break
-            }
+        guard let urlError = error as? URLError else { return defaultError }
+        switch urlError.code {
+        case .notConnectedToInternet, .networkConnectionLost, .timedOut,
+             .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+            return .networkUnreachable
+        default:
+            return defaultError
         }
-        return defaultError
     }
 
     public func restoreSession() async {
@@ -185,6 +174,13 @@ public final class SessionManager: ObservableObject {
             isPasswordRecovery = false
             semanticNotice = .passwordUpdated
             notice = AuthNotice.passwordUpdated.localizationKey
+        }
+    }
+
+    public func updateProfile(firstName: String?, lastName: String?, phone: String?) async {
+        await perform {
+            let updated = try await authService.updateProfile(firstName: firstName, lastName: lastName, phone: phone)
+            state = .authenticated(updated)
         }
     }
 

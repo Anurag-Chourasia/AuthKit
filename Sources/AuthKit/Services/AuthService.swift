@@ -65,4 +65,18 @@ public final class AuthService: Sendable {
     public func deleteAccount() async throws {
         try await backend.deleteAccount()
     }
+
+    // MARK: - Update Profile
+
+    public func updateProfile(
+        firstName: String?,
+        lastName: String?,
+        phone: String?
+    ) async throws -> AuthUser {
+        try await backend.updateProfile(
+            firstName: firstName,
+            lastName: lastName,
+            phone: phone
+        )
+    }
 }

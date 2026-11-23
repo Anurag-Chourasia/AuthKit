@@ -30,4 +30,24 @@ public protocol AuthBackend: Sendable {
     func handleCallback(_ url: URL) async throws -> AuthUser
     func signOut() async throws
     func deleteAccount() async throws
+    func updateProfile(firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser
+}
+
+extension AuthBackend {
+    public func updateProfile(
+        firstName: String?,
+        lastName: String?,
+        phone: String?
+    ) async throws -> AuthUser {
+        guard let current = try await currentUser() else {
+            throw NSError(domain: "AuthKit", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active user"])
+        }
+        return AuthUser(
+            id: current.id,
+            email: current.email,
+            firstName: firstName ?? current.firstName,
+            lastName: lastName ?? current.lastName,
+            phone: phone ?? current.phone
+        )
+    }
 }

@@ -199,4 +199,65 @@ final class UserSettingsTests: XCTestCase {
             }
         XCTAssertNotNil(modifiedView)
     }
+
+    func testProfileSectionRenderingAndActions() {
+        var savedFirst: String?
+        var savedLast: String?
+        var savedPhone: String?
+
+        let user = AuthUser(
+            id: UUID(),
+            email: "jane@example.com",
+            firstName: "Jane",
+            lastName: "Austen",
+            phone: "+15551234"
+        )
+
+        let section = UserSettingsProfileSection(
+            user: user,
+            onSaveProfile: { first, last, phone in
+                savedFirst = first
+                savedLast = last
+                savedPhone = phone
+            }
+        )
+
+        XCTAssertNotNil(section.body)
+        section.onSaveProfile?("Jane", "Austen", "+15551234")
+        XCTAssertEqual(savedFirst, "Jane")
+        XCTAssertEqual(savedLast, "Austen")
+        XCTAssertEqual(savedPhone, "+15551234")
+
+        let guestSection = UserSettingsProfileSection(user: nil)
+        XCTAssertNotNil(guestSection.body)
+    }
+
+    func testEcosystemAppsSectionFilteringAndURLs() {
+        let allSection = UserSettingsEcosystemAppsSection(currentAppScheme: nil)
+        XCTAssertNotNil(allSection.body)
+        XCTAssertEqual(UserSettingsEcosystemAppsSection.defaultApps.count, 3)
+
+        let motivationSection = UserSettingsEcosystemAppsSection(currentAppScheme: "motivationdaily")
+        XCTAssertNotNil(motivationSection.body)
+
+        for app in UserSettingsEcosystemAppsSection.defaultApps {
+            XCTAssertFalse(app.url.absoluteString.isEmpty)
+        }
+    }
+
+    func testChangePasswordSheetRenderingAndValidation() async {
+        var updatedPassword = ""
+        var dismissed = false
+
+        let sheet = ChangePasswordSheet(
+            onUpdatePassword: { updatedPassword = $0 },
+            onDismiss: { dismissed = true }
+        )
+
+        XCTAssertNotNil(sheet.body)
+        try? await sheet.onUpdatePassword("SecretP@ss1")
+        sheet.onDismiss()
+        XCTAssertEqual(updatedPassword, "SecretP@ss1")
+        XCTAssertTrue(dismissed)
+    }
 }

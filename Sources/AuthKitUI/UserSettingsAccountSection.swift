@@ -8,6 +8,7 @@ public struct UserSettingsAccountSection: View {
     public let user: AuthUser?
     public let isLoading: Bool
     public let localizer: any AuthLocalizing
+    public let onChangePassword: (() -> Void)?
     public let onSignOut: () -> Void
     public let onDeleteAccount: () -> Void
 
@@ -15,23 +16,25 @@ public struct UserSettingsAccountSection: View {
         user: AuthUser?,
         isLoading: Bool = false,
         localizer: (any AuthLocalizing)? = nil,
+        onChangePassword: (() -> Void)? = nil,
         onSignOut: @escaping () -> Void,
         onDeleteAccount: @escaping () -> Void
     ) {
         self.user = user
         self.isLoading = isLoading
         self.localizer = localizer ?? DefaultAuthLocalizer()
+        self.onChangePassword = onChangePassword
         self.onSignOut = onSignOut
         self.onDeleteAccount = onDeleteAccount
     }
 
     public var body: some View {
-        Section(localizer.string(\CommonStrings.accountTitle)) {
-            HStack(spacing: \.twelve) {
-                Image(\.personCropCircle)
-                    .foregroundStyle(\.secondary)
-                Text(user?.email ?? localizer.string(\CommonStrings.accountTitle))
-                    .foregroundStyle(user != nil ? \.primary : \.secondary)
+        Section(localizer.string(\CommonStrings.authSectionSecurity)) {
+            if let onChangePassword {
+                Button(action: onChangePassword) {
+                    Label(localizer.string(\CommonStrings.authButtonChangePassword), \.lock)
+                }
+                .disabled(isLoading)
             }
 
             Button(role: .destructive, action: onSignOut) {

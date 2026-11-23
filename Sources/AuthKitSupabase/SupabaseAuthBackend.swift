@@ -30,10 +30,7 @@ public actor SupabaseAuthBackend: AuthBackend {
             password: password
         )
 
-        return AuthUser(
-            id: session.user.id,
-            email: session.user.email
-        )
+        return Self.makeAuthUser(from: session.user)
     }
 
     public func signUp(
@@ -51,11 +48,7 @@ public actor SupabaseAuthBackend: AuthBackend {
     public func currentUser() async throws -> AuthUser? {
         do {
             let session = try await client.auth.session
-
-            return AuthUser(
-                id: session.user.id,
-                email: session.user.email
-            )
+            return Self.makeAuthUser(from: session.user)
         } catch AuthError.sessionMissing {
             return nil
         }
@@ -81,7 +74,7 @@ public actor SupabaseAuthBackend: AuthBackend {
                 for await change in changes {
                     guard !Task.isCancelled else { break }
                     continuation.yield(AuthSessionEvent(
-                        user: change.session.map { AuthUser(id: $0.user.id, email: $0.user.email) },
+                        user: change.session.map { Self.makeAuthUser(from: $0.user) },
                         isPasswordRecovery: change.event == .passwordRecovery))
                 }
                 continuation.finish()
@@ -98,9 +91,18 @@ public actor SupabaseAuthBackend: AuthBackend {
         _ = try await client.auth.update(user: UserAttributes(password: password))
     }
 
+    public func updateProfile(firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser {
+        var data: [String: AnyJSON] = [:]
+        if let firstName { data["first_name"] = .string(firstName) }
+        if let lastName { data["last_name"] = .string(lastName) }
+        let attributes = UserAttributes(phone: phone, data: data.isEmpty ? nil : data)
+        let updatedUser = try await client.auth.update(user: attributes)
+        return Self.makeAuthUser(from: updatedUser)
+    }
+
     public func handleCallback(_ url: URL) async throws -> AuthUser {
         let session = try await client.auth.session(from: url)
-        return AuthUser(id: session.user.id, email: session.user.email)
+        return Self.makeAuthUser(from: session.user)
     }
 
     public func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser {
@@ -111,7 +113,19 @@ public actor SupabaseAuthBackend: AuthBackend {
         case .apple: sdkProvider = .apple
         }
         let session = try await client.auth.signInWithOAuth(provider: sdkProvider, redirectTo: redirectTo)
-        return AuthUser(id: session.user.id, email: session.user.email)
+        return Self.makeAuthUser(from: session.user)
+    }
+
+    private static func makeAuthUser(from user: User) -> AuthUser {
+        var firstName: String?
+        var lastName: String?
+        let meta = user.userMetadata
+        if case .string(let first) = meta["first_name"] { firstName = first }
+        if case .string(let last) = meta["last_name"] { lastName = last }
+        return AuthUser(
+            id: user.id, email: user.email,
+            firstName: firstName, lastName: lastName, phone: user.phone
+        )
     }
 
 }
