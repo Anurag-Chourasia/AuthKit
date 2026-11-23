@@ -27,31 +27,22 @@ public struct UserSettingsAccountSection: View {
 
     public var body: some View {
         Section(localizer.string(\CommonStrings.accountTitle)) {
-            if let user {
-                HStack(spacing: \.twelve) {
-                    Image(\.personCropCircle)
-                        .foregroundStyle(\.secondary)
-                    Text(user.email ?? localizer.string(\CommonStrings.accountSignedIn))
-                        .foregroundStyle(\.primary)
-                }
-
-                Button(role: .destructive, action: onSignOut) {
-                    Label(localizer.string(\CommonStrings.authButtonSignOut), \.rectanglePortraitAndArrowRight)
-                }
-                .disabled(isLoading)
-
-                Button(role: .destructive, action: onDeleteAccount) {
-                    Label(localizer.string(\CommonStrings.authButtonDeleteAccount), \.trash)
-                }
-                .disabled(isLoading)
-            } else {
-                HStack(spacing: \.twelve) {
-                    Image(\.personCropCircle)
-                        .foregroundStyle(\.secondary)
-                    Text(localizer.string(\CommonStrings.accountTitle))
-                        .foregroundStyle(\.secondary)
-                }
+            HStack(spacing: \.twelve) {
+                Image(\.personCropCircle)
+                    .foregroundStyle(\.secondary)
+                Text(user?.email ?? localizer.string(\CommonStrings.accountTitle))
+                    .foregroundStyle(user != nil ? \.primary : \.secondary)
             }
+
+            Button(role: .destructive, action: onSignOut) {
+                Label(localizer.string(\CommonStrings.authButtonSignOut), \.rectanglePortraitAndArrowRight)
+            }
+            .disabled(isLoading)
+
+            Button(role: .destructive, action: onDeleteAccount) {
+                Label(localizer.string(\CommonStrings.authButtonDeleteAccount), \.trash)
+            }
+            .disabled(isLoading)
         }
     }
 }

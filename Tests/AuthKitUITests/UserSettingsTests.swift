@@ -130,6 +130,8 @@ final class UserSettingsTests: XCTestCase {
         XCTAssertNotNil(viewFromSession.body)
         viewFromSession.onSignOut()
         viewFromSession.onDeleteAccount()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertTrue(signedOut)
         XCTAssertTrue(deleteRequested)
 
         let viewDirect = UserSettingsView(
