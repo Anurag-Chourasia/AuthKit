@@ -11,7 +11,7 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
     public let localizer: any AuthLocalizing
     public let aboutConfiguration: UserSettingsAboutConfiguration?
     public let currentAppScheme: String?
-    public let onSaveProfile: ((_ first: String?, _ last: String?, _ phone: String?) -> Void)?
+    public let onSaveProfile: ((_ email: String?, _ first: String?, _ last: String?, _ phone: String?) -> Void)?
     public let onUpdatePassword: ((String) async throws -> Void)?
     public let onSignOut: () -> Void
     public let onDeleteAccount: () -> Void
@@ -26,7 +26,7 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
     public init(
         user: AuthUser?, isLoading: Bool = false, localizer: (any AuthLocalizing)? = nil,
         aboutConfiguration: UserSettingsAboutConfiguration? = nil, currentAppScheme: String? = nil,
-        onSaveProfile: ((_ first: String?, _ last: String?, _ phone: String?) -> Void)? = nil,
+        onSaveProfile: ((_ email: String?, _ first: String?, _ last: String?, _ phone: String?) -> Void)? = nil,
         onUpdatePassword: ((String) async throws -> Void)? = nil,
         onSignOut: @escaping () -> Void, onDeleteAccount: @escaping () -> Void, onDismiss: @escaping () -> Void,
         @ViewBuilder additionalContent: @escaping () -> AdditionalContent = { EmptyView() },

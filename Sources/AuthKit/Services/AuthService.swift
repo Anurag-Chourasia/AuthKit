@@ -69,11 +69,26 @@ public final class AuthService: Sendable {
     // MARK: - Update Profile
 
     public func updateProfile(
+        email: String? = nil,
         firstName: String?,
         lastName: String?,
         phone: String?
     ) async throws -> AuthUser {
         try await backend.updateProfile(
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            phone: phone
+        )
+    }
+
+    public func updateProfile(
+        firstName: String?,
+        lastName: String?,
+        phone: String?
+    ) async throws -> AuthUser {
+        try await backend.updateProfile(
+            email: nil,
             firstName: firstName,
             lastName: lastName,
             phone: phone

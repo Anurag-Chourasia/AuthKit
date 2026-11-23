@@ -7,8 +7,9 @@ import LocalizationKit
 public struct UserSettingsProfileSection: View {
     public let user: AuthUser?
     public let localizer: any AuthLocalizing
-    public let onSaveProfile: ((_ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)?
+    public let onSaveProfile: ((_ email: String?, _ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)?
 
+    @State private var email: String = ""
     @State private var firstName: String = ""
     @State private var lastName: String = ""
     @State private var phone: String = ""
@@ -16,12 +17,20 @@ public struct UserSettingsProfileSection: View {
 
     public init(
         user: AuthUser?, localizer: (any AuthLocalizing)? = nil,
-        onSaveProfile: ((_ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)? = nil
+        onSaveProfile: ((_ email: String?, _ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)? = nil
     ) {
         self.user = user; self.localizer = localizer ?? DefaultAuthLocalizer(); self.onSaveProfile = onSaveProfile
+        _email = State(initialValue: user?.email ?? "")
         _firstName = State(initialValue: user?.firstName ?? "")
         _lastName = State(initialValue: user?.lastName ?? "")
         _phone = State(initialValue: user?.phone ?? "")
+    }
+
+    public init(
+        user: AuthUser?, localizer: (any AuthLocalizing)? = nil,
+        onSaveProfile: ((_ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)?
+    ) {
+        self.init(user: user, localizer: localizer, onSaveProfile: onSaveProfile.map { cb in { cb($1, $2, $3) } })
     }
 
     public var body: some View {
@@ -30,67 +39,61 @@ public struct UserSettingsProfileSection: View {
                 Image(\.personCropCircle).foregroundStyle(\.secondary)
                 VStack(alignment: .leading, spacing: \.two) {
                     Text(displayName).font(\.headline).foregroundStyle(user != nil ? \.primary : \.secondary)
-                    Text(user?.email ?? localizer.string(\CommonStrings.accountTitle))
+                    Text(email.isEmpty ? (user?.email ?? localizer.string(\CommonStrings.accountTitle)) : email)
                         .font(\.subheadline).foregroundStyle(\.secondary)
                 }
             }
             .padding(.vertical, \.two)
 
-            HStack {
-                Label(localizer.string(\CommonStrings.authFieldFirstName), \.person).foregroundStyle(\.secondary)
-                Spacer()
-                TextField(localizer.string(\CommonStrings.authFieldFirstName), text: $firstName)
-                    .multilineTextAlignment(.trailing).onChange(of: firstName) { _ in hasEdits = true }
-            }
-
-            HStack {
-                Label(localizer.string(\CommonStrings.authFieldLastName), \.person).foregroundStyle(\.secondary)
-                Spacer()
-                TextField(localizer.string(\CommonStrings.authFieldLastName), text: $lastName)
-                    .multilineTextAlignment(.trailing).onChange(of: lastName) { _ in hasEdits = true }
-            }
-
-            HStack {
-                Label(localizer.string(\CommonStrings.authFieldEmail), \.envelope).foregroundStyle(\.secondary)
-                Spacer()
-                Text(user?.email ?? "—").foregroundStyle(\.secondary)
-            }
-
-            phoneRow
+            textRow(\CommonStrings.authFieldEmail, \.envelope, $email, isEmail: true)
+            textRow(\CommonStrings.authFieldFirstName, \.person, $firstName)
+            textRow(\CommonStrings.authFieldLastName, \.person, $lastName)
+            textRow(\CommonStrings.authFieldPhoneOptional, \.phone, $phone, isPhone: true)
 
             if hasEdits, onSaveProfile != nil {
-                Button(action: saveChanges) {
-                    Label(localizer.string(\CommonStrings.authButtonSaveProfile), \.checkmark)
-                }
+                Button(action: saveChanges) { Label(localizer.string(\CommonStrings.authButtonSaveProfile), \.checkmark) }
             }
         }
     }
 
     @ViewBuilder
-    private var phoneRow: some View {
+    private func textRow(
+        _ title: KeyPath<CommonStrings, String>, _ sym: KeyPath<SymbolTheme, AppSymbol>,
+        _ text: Binding<String>, isEmail: Bool = false, isPhone: Bool = false
+    ) -> some View {
         HStack {
-            Label(localizer.string(\CommonStrings.authFieldPhoneOptional), \.phone).foregroundStyle(\.secondary)
+            Label(localizer.string(title), sym).foregroundStyle(\.secondary)
             Spacer()
             #if os(iOS)
-            TextField(localizer.string(\CommonStrings.authFieldPhoneOptional), text: $phone)
-                .multilineTextAlignment(.trailing).keyboardType(.phonePad).onChange(of: phone) { _ in hasEdits = true }
+            if isEmail {
+                TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
+                    .keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .onChange(of: text.wrappedValue) { _ in hasEdits = true }
+            } else if isPhone {
+                TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
+                    .keyboardType(.phonePad).onChange(of: text.wrappedValue) { _ in hasEdits = true }
+            } else {
+                TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
+                    .onChange(of: text.wrappedValue) { _ in hasEdits = true }
+            }
             #else
-            TextField(localizer.string(\CommonStrings.authFieldPhoneOptional), text: $phone)
-                .multilineTextAlignment(.trailing).onChange(of: phone) { _ in hasEdits = true }
+            TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
+                .onChange(of: text.wrappedValue) { _ in hasEdits = true }
             #endif
         }
     }
 
     private var displayName: String {
-        if let fullName = user?.fullName, !fullName.isEmpty { return fullName }
-        return user?.email ?? localizer.string(\CommonStrings.accountTitle)
+        guard let name = user?.fullName, !name.isEmpty else { return email.isEmpty ? (user?.email ?? "") : email }
+        return name
     }
 
     private func saveChanges() {
+        let e = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let f = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
         let l = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
         let p = phone.trimmingCharacters(in: .whitespacesAndNewlines)
-        onSaveProfile?(f.isEmpty ? nil : f, l.isEmpty ? nil : l, p.isEmpty ? nil : p)
+        onSaveProfile?(e != user?.email && !e.isEmpty ? e : nil, f.isEmpty ? nil : f, l.isEmpty ? nil : l, p.isEmpty ? nil : p)
         hasEdits = false
     }
 }

@@ -1,47 +1,20 @@
-//
-//  SupabaseAuthBackend.swift
-//  AuthKit
-//
-//  Created by Anurag Chourasia on 31/10/26.
-//
-
 import Foundation
 import AuthKit
 import Supabase
 
 public actor SupabaseAuthBackend: AuthBackend {
-
     private let client: SupabaseClient
 
-    public init(manager: SupabaseManager) {
-        self.client = manager.client
-    }
+    public init(manager: SupabaseManager) { self.client = manager.client }
+    public init(client: SupabaseClient) { self.client = client }
 
-    public init(client: SupabaseClient) {
-        self.client = client
-    }
-
-    public func signIn(
-        email: String,
-        password: String
-    ) async throws -> AuthUser {
-        let session = try await client.auth.signIn(
-            email: email,
-            password: password
-        )
-
+    public func signIn(email: String, password: String) async throws -> AuthUser {
+        let session = try await client.auth.signIn(email: email, password: password)
         return Self.makeAuthUser(from: session.user)
     }
 
-    public func signUp(
-        email: String,
-        password: String
-    ) async throws -> Bool {
-        let response = try await client.auth.signUp(
-            email: email,
-            password: password
-        )
-
+    public func signUp(email: String, password: String) async throws -> Bool {
+        let response = try await client.auth.signUp(email: email, password: password)
         return response.session == nil
     }
 
@@ -63,10 +36,10 @@ public actor SupabaseAuthBackend: AuthBackend {
     }
 
     public func deleteAccount() async throws {
-        // Trigger server-side user deletion function or RPC
         try await client.functions.invoke("delete-user-account")
         try await client.auth.signOut(scope: .local)
     }
+
     public func events() async -> AsyncStream<AuthSessionEvent> {
         let changes = client.auth.authStateChanges
         return AsyncStream { continuation in
@@ -91,13 +64,31 @@ public actor SupabaseAuthBackend: AuthBackend {
         _ = try await client.auth.update(user: UserAttributes(password: password))
     }
 
-    public func updateProfile(firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser {
+    public func updateProfile(
+        email: String? = nil, firstName: String?, lastName: String?, phone: String?
+    ) async throws -> AuthUser {
         var data: [String: AnyJSON] = [:]
         if let firstName { data["first_name"] = .string(firstName) }
         if let lastName { data["last_name"] = .string(lastName) }
-        let attributes = UserAttributes(phone: phone, data: data.isEmpty ? nil : data)
-        let updatedUser = try await client.auth.update(user: attributes)
-        return Self.makeAuthUser(from: updatedUser)
+        if let firstName, let lastName { data["full_name"] = .string("\(firstName) \(lastName)") }
+        let cleanPhone = phone?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let phoneToUpdate = (cleanPhone?.isEmpty == false) ? cleanPhone : nil
+        if let phoneToUpdate { data["phone"] = .string(phoneToUpdate) }
+        let cleanEmail = email?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let emailToUpdate = (cleanEmail?.isEmpty == false) ? cleanEmail : nil
+        do {
+            let attrs = UserAttributes(email: emailToUpdate, phone: phoneToUpdate, data: data.isEmpty ? nil : data)
+            let updatedUser = try await client.auth.update(user: attrs)
+            return Self.makeAuthUser(from: updatedUser)
+        } catch {
+            let fallback = UserAttributes(email: emailToUpdate, data: data.isEmpty ? nil : data)
+            let updatedUser = try await client.auth.update(user: fallback)
+            return Self.makeAuthUser(from: updatedUser)
+        }
+    }
+
+    public func updateProfile(firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser {
+        try await updateProfile(email: nil, firstName: firstName, lastName: lastName, phone: phone)
     }
 
     public func handleCallback(_ url: URL) async throws -> AuthUser {
@@ -122,10 +113,16 @@ public actor SupabaseAuthBackend: AuthBackend {
         let meta = user.userMetadata
         if case .string(let first) = meta["first_name"] { firstName = first }
         if case .string(let last) = meta["last_name"] { lastName = last }
-        return AuthUser(
-            id: user.id, email: user.email,
-            firstName: firstName, lastName: lastName, phone: user.phone
-        )
+        if firstName == nil && lastName == nil {
+            if case .string(let full) = meta["full_name"] ?? meta["name"] {
+                let parts = full.split(separator: " ", maxSplits: 1).map(String.init)
+                firstName = parts.first; if parts.count > 1 { lastName = parts.last }
+            }
+        }
+        var phone = user.phone
+        if (phone == nil || phone?.isEmpty == true), case .string(let metaPhone) = meta["phone"] {
+            phone = metaPhone
+        }
+        return AuthUser(id: user.id, email: user.email, firstName: firstName, lastName: lastName, phone: phone)
     }
-
 }

@@ -177,10 +177,12 @@ public final class SessionManager: ObservableObject {
         }
     }
 
-    public func updateProfile(firstName: String?, lastName: String?, phone: String?) async {
+    public func updateProfile(email: String? = nil, firstName: String?, lastName: String?, phone: String?) async {
         await perform {
-            let updated = try await authService.updateProfile(firstName: firstName, lastName: lastName, phone: phone)
-            state = .authenticated(updated)
+            let u = try await authService.updateProfile(
+                email: email, firstName: firstName, lastName: lastName, phone: phone
+            )
+            state = .authenticated(u)
         }
     }
 

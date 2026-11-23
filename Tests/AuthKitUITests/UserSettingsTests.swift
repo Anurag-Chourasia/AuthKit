@@ -223,10 +223,24 @@ final class UserSettingsTests: XCTestCase {
         )
 
         XCTAssertNotNil(section.body)
-        section.onSaveProfile?("Jane", "Austen", "+15551234")
+        section.onSaveProfile?(nil, "Jane", "Austen", "+15551234")
         XCTAssertEqual(savedFirst, "Jane")
         XCTAssertEqual(savedLast, "Austen")
         XCTAssertEqual(savedPhone, "+15551234")
+
+        var savedEmail4: String?
+        var savedFirst4: String?
+        let section4 = UserSettingsProfileSection(
+            user: user,
+            onSaveProfile: { email, first, last, phone in
+                savedEmail4 = email
+                savedFirst4 = first
+            }
+        )
+        XCTAssertNotNil(section4.body)
+        section4.onSaveProfile?("new@example.com", "Jane", "Austen", "+15551234")
+        XCTAssertEqual(savedEmail4, "new@example.com")
+        XCTAssertEqual(savedFirst4, "Jane")
 
         let guestSection = UserSettingsProfileSection(user: nil)
         XCTAssertNotNil(guestSection.body)

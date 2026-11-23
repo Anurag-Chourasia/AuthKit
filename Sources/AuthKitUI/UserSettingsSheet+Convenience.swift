@@ -16,8 +16,8 @@ extension UserSettingsSheet {
         self.init(
             user: currentUser, isLoading: session.isLoading, localizer: localizer,
             aboutConfiguration: aboutConfiguration, currentAppScheme: currentAppScheme,
-            onSaveProfile: { first, last, phone in
-                Task { await session.updateProfile(firstName: first, lastName: last, phone: phone) }
+            onSaveProfile: { email, first, last, phone in
+                Task { await session.updateProfile(email: email, firstName: first, lastName: last, phone: phone) }
             },
             onUpdatePassword: { await session.updatePassword($0) },
             onSignOut: { Task { await session.signOut(); onDismiss() } },
@@ -32,7 +32,7 @@ extension UserSettingsSheet where DeveloperContent == EmptyView {
     public init(
         user: AuthUser?, isLoading: Bool = false, localizer: (any AuthLocalizing)? = nil,
         aboutConfiguration: UserSettingsAboutConfiguration? = nil, currentAppScheme: String? = nil,
-        onSaveProfile: ((_ first: String?, _ last: String?, _ phone: String?) -> Void)? = nil,
+        onSaveProfile: ((_ email: String?, _ first: String?, _ last: String?, _ phone: String?) -> Void)? = nil,
         onUpdatePassword: ((String) async throws -> Void)? = nil,
         onSignOut: @escaping () -> Void, onDeleteAccount: @escaping () -> Void, onDismiss: @escaping () -> Void,
         @ViewBuilder additionalContent: @escaping () -> AdditionalContent = { EmptyView() }
@@ -43,6 +43,24 @@ extension UserSettingsSheet where DeveloperContent == EmptyView {
             onSaveProfile: onSaveProfile, onUpdatePassword: onUpdatePassword,
             onSignOut: onSignOut, onDeleteAccount: onDeleteAccount, onDismiss: onDismiss,
             additionalContent: additionalContent, developerContent: { EmptyView() }
+        )
+    }
+
+    public init(
+        user: AuthUser?, isLoading: Bool = false, localizer: (any AuthLocalizing)? = nil,
+        aboutConfiguration: UserSettingsAboutConfiguration? = nil, currentAppScheme: String? = nil,
+        onSaveProfile: ((_ first: String?, _ last: String?, _ phone: String?) -> Void)?,
+        onUpdatePassword: ((String) async throws -> Void)? = nil,
+        onSignOut: @escaping () -> Void, onDeleteAccount: @escaping () -> Void, onDismiss: @escaping () -> Void,
+        @ViewBuilder additionalContent: @escaping () -> AdditionalContent = { EmptyView() }
+    ) {
+        self.init(
+            user: user, isLoading: isLoading, localizer: localizer,
+            aboutConfiguration: aboutConfiguration, currentAppScheme: currentAppScheme,
+            onSaveProfile: onSaveProfile.map { cb in { cb($1, $2, $3) } },
+            onUpdatePassword: onUpdatePassword, onSignOut: onSignOut,
+            onDeleteAccount: onDeleteAccount, onDismiss: onDismiss,
+            additionalContent: additionalContent
         )
     }
 
