@@ -2,46 +2,45 @@ import SwiftUI
 import DesignTokensKit
 import LocalizationKit
 
-/// Modal sheet for authenticated user password change with eye toggle, clear button, and OTP verification.
+/// Modal sheet for authenticated user password change with current password, eye toggle, and OTP verification.
 public struct ChangePasswordSheet: View {
     public let localizer: any AuthLocalizing
-    public let userEmail: String?
+    public let destination: String?
     public let onSendOTP: (() async throws -> Void)?
-    public let onUpdatePassword: (String) async throws -> Void
+    public let onChangePassword: ((String, String, String) async throws -> Void)?
+    public let onUpdatePassword: ((String) async throws -> Void)?
     public let onDismiss: () -> Void
 
-    @State private var newPassword = ""
-    @State private var confirmPassword = ""
-    @State private var otpCode = ""
-    @State private var otpSent = false
+    @State private var currentPassword = ""; @State private var newPassword = ""
+    @State private var confirmPassword = ""; @State private var otpCode = ""
+    @State private var otpSent = false; @State private var isSubmitting = false
     @State private var errorMessage: String?
-    @State private var isSubmitting = false
 
-    public init(
-        localizer: (any AuthLocalizing)? = nil, userEmail: String? = nil,
-        onSendOTP: (() async throws -> Void)? = nil,
-        onUpdatePassword: @escaping (String) async throws -> Void, onDismiss: @escaping () -> Void
-    ) {
-        self.localizer = localizer ?? DefaultAuthLocalizer()
-        self.userEmail = userEmail
-        self.onSendOTP = onSendOTP
-        self.onUpdatePassword = onUpdatePassword
-        self.onDismiss = onDismiss
+    public init(localizer: (any AuthLocalizing)? = nil, destination: String? = nil,
+                onSendOTP: (() async throws -> Void)? = nil,
+                onChangePassword: ((String, String, String) async throws -> Void)? = nil,
+                onUpdatePassword: ((String) async throws -> Void)? = nil, onDismiss: @escaping () -> Void) {
+        self.localizer = localizer ?? DefaultAuthLocalizer(); self.destination = destination
+        self.onSendOTP = onSendOTP; self.onChangePassword = onChangePassword
+        self.onUpdatePassword = onUpdatePassword; self.onDismiss = onDismiss
     }
 
     public var body: some View {
         NavigationStack {
             Form {
-                if let onSendOTP {
-                    ChangePasswordOTPSection(
-                        userEmail: userEmail, localizer: localizer, onSend: onSendOTP,
-                        otpCode: $otpCode, otpSent: $otpSent
-                    )
+                Section {
+                    AuthSecureInputField(localizer.string(\CommonStrings.authFieldCurrentPassword), text: $currentPassword)
                 }
                 Section {
                     AuthSecureInputField(localizer.string(\CommonStrings.authFieldNewPassword), text: $newPassword)
                     AuthSecureInputField(localizer.string(\CommonStrings.authFieldConfirmPassword), text: $confirmPassword)
                 } footer: { Text(localizer.string(\CommonStrings.authInstructionPasswordRequirements)) }
+                if let onSendOTP {
+                    ChangePasswordOTPSection(
+                        destination: destination, localizer: localizer, onSend: onSendOTP,
+                        otpCode: $otpCode, otpSent: $otpSent
+                    )
+                }
                 if let errorMessage {
                     Section { Text(errorMessage).foregroundStyle(\.red).font(\.caption) }
                 }
@@ -52,6 +51,8 @@ public struct ChangePasswordSheet: View {
             .navigationTitle(localizer.string(\CommonStrings.authTitleChangePassword))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(BrandPalette.current.background, for: .navigationBar)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -59,6 +60,11 @@ public struct ChangePasswordSheet: View {
                 }
             }
         }
+        .background(\.background)
+        #if os(iOS)
+        .presentationBackground(BrandPalette.current.background)
+        .presentationDragIndicator(.visible)
+        #endif
     }
 
     private var submitButton: some View {
@@ -75,7 +81,8 @@ public struct ChangePasswordSheet: View {
     }
 
     private var isValid: Bool {
-        newPassword.count >= 8 && newPassword == confirmPassword && (onSendOTP == nil || !otpCode.isEmpty)
+        !currentPassword.isEmpty && newPassword.count >= 8 && newPassword == confirmPassword
+            && (onSendOTP == nil || !otpCode.isEmpty)
     }
 
     private func submitPassword() {
@@ -83,11 +90,11 @@ public struct ChangePasswordSheet: View {
         isSubmitting = true; errorMessage = nil
         Task {
             do {
-                try await onUpdatePassword(newPassword)
+                if let onChangePassword {
+                    try await onChangePassword(currentPassword, newPassword, otpCode)
+                } else if let onUpdatePassword { try await onUpdatePassword(newPassword) }
                 isSubmitting = false; onDismiss()
-            } catch {
-                isSubmitting = false; errorMessage = error.localizedDescription
-            }
+            } catch { isSubmitting = false; errorMessage = error.localizedDescription }
         }
     }
 }

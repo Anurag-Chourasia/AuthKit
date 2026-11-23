@@ -14,6 +14,9 @@ public protocol AuthBackend: Sendable {
     func deleteAccount() async throws
     func updateProfile(email: String?, firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser
     func updateProfile(firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser
+    func sendPasswordResetOTP(email: String?, phone: String?) async throws
+    func verifyPasswordResetOTP(email: String?, phone: String?, token: String) async throws
+    func changePassword(currentPassword: String, newPassword: String, otpCode: String) async throws
 }
 
 public extension AuthBackend {
@@ -30,5 +33,13 @@ public extension AuthBackend {
             firstName: firstName ?? current.firstName,
             lastName: lastName ?? current.lastName, phone: phone ?? current.phone
         )
+    }
+
+    func sendPasswordResetOTP(email: String?, phone: String?) async throws {}
+
+    func verifyPasswordResetOTP(email: String?, phone: String?, token: String) async throws {}
+
+    func changePassword(currentPassword: String, newPassword: String, otpCode: String) async throws {
+        try await updatePassword(newPassword)
     }
 }

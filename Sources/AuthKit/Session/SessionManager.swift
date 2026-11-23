@@ -1,33 +1,6 @@
 import Foundation
 import Combine
 
-public enum AuthState: Equatable, Sendable {
-    case loading
-    case authenticated(AuthUser)
-    case unauthenticated
-}
-
-/// Semantic notice states emitted by `SessionManager`.
-public enum AuthNotice: String, CaseIterable, Equatable, Sendable {
-    case confirmEmail = "auth.notice.confirm_email"
-    case accountDeleted = "auth.notice.account_deleted"
-    case passwordResetSent = "auth.notice.password_reset_sent"
-    case passwordUpdated = "auth.notice.password_updated"
-
-    public var localizationKey: String { rawValue }
-}
-
-/// Semantic authentication failure categories emitted by `SessionManager`.
-public enum AuthSessionError: String, CaseIterable, Equatable, Sendable {
-    case networkUnreachable = "errors.network_unreachable"
-    case invalidCredentials = "errors.invalid_credentials"
-    case sessionExpired = "errors.session_expired"
-    case accountDeletionFailed = "errors.account_deletion_failed"
-    case generic = "errors.generic"
-
-    public var localizationKey: String { rawValue }
-}
-
 /// Own one instance per app session. Operations are serialized: a second user intent
 /// is rejected while an authentication request is active, including browser OAuth.
 @MainActor
@@ -165,6 +138,23 @@ public final class SessionManager: ObservableObject {
             try await authService.requestPasswordReset(email: email, redirectTo: redirectTo)
             semanticNotice = .passwordResetSent
             notice = AuthNotice.passwordResetSent.localizationKey
+        }
+    }
+
+    public func sendPasswordResetOTP() async throws {
+        let u: AuthUser?
+        if case .authenticated(let authed) = state { u = authed } else { u = try await authService.currentUser() }
+        try await authService.sendPasswordResetOTP(email: u?.email, phone: u?.phone)
+    }
+
+    public func changePassword(currentPassword: String, newPassword: String, otpCode: String) async {
+        await perform {
+            try await authService.changePassword(
+                currentPassword: currentPassword, newPassword: newPassword, otpCode: otpCode
+            )
+            isPasswordRecovery = false
+            semanticNotice = .passwordUpdated
+            notice = AuthNotice.passwordUpdated.localizationKey
         }
     }
 

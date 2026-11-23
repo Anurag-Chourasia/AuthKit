@@ -13,6 +13,17 @@ public final class AuthService: Sendable {
         try await backend.requestPasswordReset(email: email, redirectTo: redirectTo)
     }
     public func updatePassword(_ password: String) async throws { try await backend.updatePassword(password) }
+    public func sendPasswordResetOTP(email: String?, phone: String?) async throws {
+        try await backend.sendPasswordResetOTP(email: email, phone: phone)
+    }
+    public func verifyPasswordResetOTP(email: String?, phone: String?, token: String) async throws {
+        try await backend.verifyPasswordResetOTP(email: email, phone: phone, token: token)
+    }
+    public func changePassword(currentPassword: String, newPassword: String, otpCode: String) async throws {
+        try await backend.changePassword(
+            currentPassword: currentPassword, newPassword: newPassword, otpCode: otpCode
+        )
+    }
     public func signIn(provider: AuthProvider, redirectTo: URL) async throws -> AuthUser {
         try await backend.signIn(provider: provider, redirectTo: redirectTo)
     }

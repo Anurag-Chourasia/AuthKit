@@ -53,7 +53,7 @@ public struct UserSettingsProfileSection: View {
             }
         }
         .onDisappear { if hasEdits { saveChanges() } }
-        .onChange(of: user) { u in
+        .onChange(of: user) { _, u in
             guard let u else { return }
             email = u.email ?? ""; firstName = u.firstName ?? ""; lastName = u.lastName ?? ""; phone = u.phone ?? ""
         }
@@ -73,12 +73,13 @@ public struct UserSettingsProfileSection: View {
                 .textInputAutocapitalization(isEmail ? .never : .words)
                 #endif
                 .autocorrectionDisabled(isEmail || isPhone)
-                .onChange(of: text.wrappedValue) { _ in hasEdits = true }
+                .onChange(of: text.wrappedValue) { _, _ in hasEdits = true }
         }
     }
 
     private var displayName: String {
-        user?.fullName?.isEmpty == false ? user!.fullName! : (email.isEmpty ? (user?.email ?? "") : email)
+        if let name = user?.fullName, !name.isEmpty { return name }
+        return email.isEmpty ? (user?.email ?? "") : email
     }
 
     private func saveChanges() {

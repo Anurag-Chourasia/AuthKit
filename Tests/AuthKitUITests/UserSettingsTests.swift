@@ -232,7 +232,7 @@ final class UserSettingsTests: XCTestCase {
         var savedFirst4: String?
         let section4 = UserSettingsProfileSection(
             user: user,
-            onSaveProfile: { email, first, last, phone in
+            onSaveProfile: { email, first, _, _ in
                 savedEmail4 = email
                 savedFirst4 = first
             }
@@ -269,7 +269,7 @@ final class UserSettingsTests: XCTestCase {
         )
 
         XCTAssertNotNil(sheet.body)
-        try? await sheet.onUpdatePassword("SecretP@ss1")
+        try? await sheet.onUpdatePassword?("SecretP@ss1")
         sheet.onDismiss()
         XCTAssertEqual(updatedPassword, "SecretP@ss1")
         XCTAssertTrue(dismissed)

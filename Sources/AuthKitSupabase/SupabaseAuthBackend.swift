@@ -3,7 +3,7 @@ import AuthKit
 import Supabase
 
 public actor SupabaseAuthBackend: AuthBackend {
-    private let client: SupabaseClient
+    let client: SupabaseClient
 
     public init(manager: SupabaseManager) { self.client = manager.client }
     public init(client: SupabaseClient) { self.client = client }

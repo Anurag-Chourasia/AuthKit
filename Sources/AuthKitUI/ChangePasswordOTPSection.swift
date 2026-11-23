@@ -3,26 +3,29 @@ import DesignTokensKit
 import LocalizationKit
 
 struct ChangePasswordOTPSection: View {
-    let userEmail: String?
+    let destination: String?
     let localizer: any AuthLocalizing
     let onSend: () async throws -> Void
     @Binding var otpCode: String
     @Binding var otpSent: Bool
+    @State private var isSending = false
 
     var body: some View {
         Section {
-            if let userEmail, !userEmail.isEmpty {
+            if let destination, !destination.isEmpty {
                 HStack {
-                    Text(userEmail).font(\.subheadline).foregroundStyle(\.secondary)
+                    Text(destination).font(\.subheadline).foregroundStyle(\.secondary)
                     Spacer()
-                    Button(otpSent ? localizer.string(\CommonStrings.authInstructionResetEmailSent) : "Send OTP") {
-                        Task { try? await onSend(); otpSent = true }
+                    if isSending {
+                        ProgressView().scaleEffect(\.p0_8)
+                    } else {
+                        Button(otpButtonTitle) { sendCode() }
+                            .font(\.footnote)
                     }
-                    .font(\.footnote)
                 }
             }
             HStack {
-                TextField("Verification Code (OTP)", text: $otpCode)
+                TextField(localizer.string(\CommonStrings.authFieldOtpCode), text: $otpCode)
                     #if os(iOS)
                     .keyboardType(.numberPad)
                     #endif
@@ -31,6 +34,25 @@ struct ChangePasswordOTPSection: View {
                         .buttonStyle(.plain)
                 }
             }
+        } footer: {
+            if otpSent {
+                Text(localizer.string(\CommonStrings.authStatusOtpSent))
+            }
+        }
+    }
+
+    private var otpButtonTitle: String {
+        otpSent
+            ? localizer.string(\CommonStrings.authButtonResendOtp)
+            : localizer.string(\CommonStrings.authButtonSendOtp)
+    }
+
+    private func sendCode() {
+        isSending = true
+        Task {
+            try? await onSend()
+            isSending = false
+            otpSent = true
         }
     }
 }
