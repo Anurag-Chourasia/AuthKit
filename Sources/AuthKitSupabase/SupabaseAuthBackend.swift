@@ -73,18 +73,32 @@ public actor SupabaseAuthBackend: AuthBackend {
         if let firstName, let lastName { data["full_name"] = .string("\(firstName) \(lastName)") }
         let cleanPhone = phone?.trimmingCharacters(in: .whitespacesAndNewlines)
         let phoneToUpdate = (cleanPhone?.isEmpty == false) ? cleanPhone : nil
-        if let phoneToUpdate { data["phone"] = .string(phoneToUpdate) }
+        if let phoneToUpdate {
+            data["phone"] = .string(phoneToUpdate)
+            data["phone_number"] = .string(phoneToUpdate)
+        } else if phone != nil {
+            data["phone"] = .null
+            data["phone_number"] = .null
+        }
         let cleanEmail = email?.trimmingCharacters(in: .whitespacesAndNewlines)
         let emailToUpdate = (cleanEmail?.isEmpty == false) ? cleanEmail : nil
+        var returnedUser: AuthUser
         do {
             let attrs = UserAttributes(email: emailToUpdate, phone: phoneToUpdate, data: data.isEmpty ? nil : data)
             let updatedUser = try await client.auth.update(user: attrs)
-            return Self.makeAuthUser(from: updatedUser)
+            returnedUser = Self.makeAuthUser(from: updatedUser)
         } catch {
             let fallback = UserAttributes(email: emailToUpdate, data: data.isEmpty ? nil : data)
             let updatedUser = try await client.auth.update(user: fallback)
-            return Self.makeAuthUser(from: updatedUser)
+            returnedUser = Self.makeAuthUser(from: updatedUser)
         }
+        if (returnedUser.phone == nil || returnedUser.phone?.isEmpty == true), let phoneToUpdate {
+            returnedUser = AuthUser(
+                id: returnedUser.id, email: returnedUser.email, firstName: returnedUser.firstName,
+                lastName: returnedUser.lastName, phone: phoneToUpdate
+            )
+        }
+        return returnedUser
     }
 
     public func updateProfile(firstName: String?, lastName: String?, phone: String?) async throws -> AuthUser {
@@ -120,7 +134,8 @@ public actor SupabaseAuthBackend: AuthBackend {
             }
         }
         var phone = user.phone
-        if (phone == nil || phone?.isEmpty == true), case .string(let metaPhone) = meta["phone"] {
+        if phone == nil || phone?.isEmpty == true,
+           case .string(let metaPhone) = meta["phone"] ?? meta["phone_number"] {
             phone = metaPhone
         }
         return AuthUser(id: user.id, email: user.email, firstName: firstName, lastName: lastName, phone: phone)

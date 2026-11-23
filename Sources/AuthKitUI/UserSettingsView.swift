@@ -66,6 +66,8 @@ public struct UserSettingsView<AdditionalContent: View>: View {
 
             additionalContent()
         }
+        .scrollContentBackground(.hidden)
+        .background(\.background)
     }
 }
 

@@ -70,7 +70,7 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
             .sheet(isPresented: $showingChangePassword) {
                 if let onUpdatePassword {
                     ChangePasswordSheet(
-                        localizer: localizer, onUpdatePassword: onUpdatePassword,
+                        localizer: localizer, userEmail: user?.email, onUpdatePassword: onUpdatePassword,
                         onDismiss: { showingChangePassword = false }
                     )
                 }
@@ -79,6 +79,7 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
                 if let developerContent { developerContent() }
             }
         }
+        .background(\.background)
     }
 
     private var resolvedAboutConfiguration: UserSettingsAboutConfiguration? {

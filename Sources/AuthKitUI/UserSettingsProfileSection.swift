@@ -20,16 +20,12 @@ public struct UserSettingsProfileSection: View {
         onSaveProfile: ((_ email: String?, _ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)? = nil
     ) {
         self.user = user; self.localizer = localizer ?? DefaultAuthLocalizer(); self.onSaveProfile = onSaveProfile
-        _email = State(initialValue: user?.email ?? "")
-        _firstName = State(initialValue: user?.firstName ?? "")
-        _lastName = State(initialValue: user?.lastName ?? "")
-        _phone = State(initialValue: user?.phone ?? "")
+        _email = State(initialValue: user?.email ?? ""); _firstName = State(initialValue: user?.firstName ?? "")
+        _lastName = State(initialValue: user?.lastName ?? ""); _phone = State(initialValue: user?.phone ?? "")
     }
 
-    public init(
-        user: AuthUser?, localizer: (any AuthLocalizing)? = nil,
-        onSaveProfile: ((_ firstName: String?, _ lastName: String?, _ phone: String?) -> Void)?
-    ) {
+    public init(user: AuthUser?, localizer: (any AuthLocalizing)? = nil,
+                onSaveProfile: ((_ first: String?, _ last: String?, _ phone: String?) -> Void)?) {
         self.init(user: user, localizer: localizer, onSaveProfile: onSaveProfile.map { cb in { cb($1, $2, $3) } })
     }
 
@@ -51,8 +47,15 @@ public struct UserSettingsProfileSection: View {
             textRow(\CommonStrings.authFieldPhoneOptional, \.phone, $phone, isPhone: true)
 
             if hasEdits, onSaveProfile != nil {
-                Button(action: saveChanges) { Label(localizer.string(\CommonStrings.authButtonSaveProfile), \.checkmark) }
+                Button(action: saveChanges) {
+                    Label(localizer.string(\CommonStrings.authButtonSaveProfile), \.checkmark)
+                }
             }
+        }
+        .onDisappear { if hasEdits { saveChanges() } }
+        .onChange(of: user) { u in
+            guard let u else { return }
+            email = u.email ?? ""; firstName = u.firstName ?? ""; lastName = u.lastName ?? ""; phone = u.phone ?? ""
         }
     }
 
@@ -64,36 +67,33 @@ public struct UserSettingsProfileSection: View {
         HStack {
             Label(localizer.string(title), sym).foregroundStyle(\.secondary)
             Spacer()
-            #if os(iOS)
-            if isEmail {
-                TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
-                    .keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .onChange(of: text.wrappedValue) { _ in hasEdits = true }
-            } else if isPhone {
-                TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
-                    .keyboardType(.phonePad).onChange(of: text.wrappedValue) { _ in hasEdits = true }
-            } else {
-                TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
-                    .onChange(of: text.wrappedValue) { _ in hasEdits = true }
-            }
-            #else
             TextField(localizer.string(title), text: text).multilineTextAlignment(.trailing)
+                #if os(iOS)
+                .keyboardType(isEmail ? .emailAddress : (isPhone ? .phonePad : .default))
+                .textInputAutocapitalization(isEmail ? .never : .words)
+                #endif
+                .autocorrectionDisabled(isEmail || isPhone)
                 .onChange(of: text.wrappedValue) { _ in hasEdits = true }
-            #endif
+            if !text.wrappedValue.isEmpty {
+                Button { text.wrappedValue = ""; hasEdits = true } label: {
+                    Image(\.xmark).foregroundStyle(\.secondary)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
     private var displayName: String {
-        guard let name = user?.fullName, !name.isEmpty else { return email.isEmpty ? (user?.email ?? "") : email }
-        return name
+        user?.fullName?.isEmpty == false ? user!.fullName! : (email.isEmpty ? (user?.email ?? "") : email)
     }
 
     private func saveChanges() {
-        let e = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let f = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let l = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let p = phone.trimmingCharacters(in: .whitespacesAndNewlines)
-        onSaveProfile?(e != user?.email && !e.isEmpty ? e : nil, f.isEmpty ? nil : f, l.isEmpty ? nil : l, p.isEmpty ? nil : p)
+        let (e, f) = (email.trimmingCharacters(in: .whitespaces), firstName.trimmingCharacters(in: .whitespaces))
+        let (l, p) = (lastName.trimmingCharacters(in: .whitespaces), phone.trimmingCharacters(in: .whitespaces))
+        onSaveProfile?(
+            e != user?.email && !e.isEmpty ? e : nil,
+            f.isEmpty ? nil : f, l.isEmpty ? nil : l, p.isEmpty ? nil : p
+        )
         hasEdits = false
     }
 }
