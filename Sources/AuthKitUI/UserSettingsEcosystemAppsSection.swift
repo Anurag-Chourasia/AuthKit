@@ -9,6 +9,16 @@ public struct EcosystemAppItem: Identifiable, @unchecked Sendable {
     public let nameKey: KeyPath<CommonStrings, String>
     public let subtitleKey: KeyPath<CommonStrings, String>
     public let symbol: KeyPath<SymbolTheme, AppSymbol>
+    public let iconColor: KeyPath<ColorTheme, Color>
+
+    public init(
+        id: String, scheme: String, nameKey: KeyPath<CommonStrings, String>,
+        subtitleKey: KeyPath<CommonStrings, String>, symbol: KeyPath<SymbolTheme, AppSymbol>,
+        iconColor: KeyPath<ColorTheme, Color> = \.action
+    ) {
+        self.id = id; self.scheme = scheme; self.nameKey = nameKey
+        self.subtitleKey = subtitleKey; self.symbol = symbol; self.iconColor = iconColor
+    }
 
     public var url: URL {
         URL(string: "\(scheme)://") ?? URL(fileURLWithPath: "/")
@@ -23,25 +33,22 @@ public struct UserSettingsEcosystemAppsSection: View {
 
     public static let defaultApps: [EcosystemAppItem] = [
         EcosystemAppItem(
-            id: "motivationdaily",
-            scheme: "motivationdaily",
+            id: "motivationdaily", scheme: "motivationdaily",
             nameKey: \CommonStrings.authAppsMotivationDaily,
             subtitleKey: \CommonStrings.authAppsMotivationDailySubtitle,
-            symbol: \.quoteOpening
+            symbol: \.quoteOpening, iconColor: \.orange
         ),
         EcosystemAppItem(
-            id: "showbook",
-            scheme: "showbook",
+            id: "showbook", scheme: "showbook",
             nameKey: \CommonStrings.authAppsShowbook,
             subtitleKey: \CommonStrings.authAppsShowbookSubtitle,
-            symbol: \.bookClosed
+            symbol: \.bookClosed, iconColor: \.blue
         ),
         EcosystemAppItem(
-            id: "mytv",
-            scheme: "mytv",
+            id: "mytv", scheme: "mytv",
             nameKey: \CommonStrings.authAppsMytv,
             subtitleKey: \CommonStrings.authAppsMytvSubtitle,
-            symbol: \.tv
+            symbol: \.tv, iconColor: \.turquoise
         )
     ]
 
@@ -66,7 +73,7 @@ public struct UserSettingsEcosystemAppsSection: View {
                         Image(app.symbol)
                             .font(\.title3)
                             .frame(width: \.p32, height: \.p32)
-                            .foregroundStyle(\.brandPrimary)
+                            .foregroundStyle(app.iconColor)
 
                         VStack(alignment: .leading, spacing: \.two) {
                             Text(localizer.string(app.nameKey))
