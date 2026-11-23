@@ -61,10 +61,7 @@ public struct ChangePasswordSheet: View {
             }
         }
         .background(\.background)
-        #if os(iOS)
-        .presentationBackground(BrandPalette.current.background)
-        .presentationDragIndicator(.visible)
-        #endif
+        .applyModalSheetStyle()
     }
 
     private var submitButton: some View {

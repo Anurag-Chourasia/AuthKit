@@ -81,10 +81,7 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
             }
         }
         .background(\.background)
-        #if os(iOS)
-        .presentationBackground(BrandPalette.current.background)
-        .presentationDragIndicator(.visible)
-        #endif
+        .applyModalSheetStyle()
     }
 
     private var hasPasswordAction: Bool { onChangePassword != nil || onUpdatePassword != nil }
