@@ -74,12 +74,6 @@ public struct UserSettingsProfileSection: View {
                 #endif
                 .autocorrectionDisabled(isEmail || isPhone)
                 .onChange(of: text.wrappedValue) { _ in hasEdits = true }
-            if !text.wrappedValue.isEmpty {
-                Button { text.wrappedValue = ""; hasEdits = true } label: {
-                    Image(\.xmark).foregroundStyle(\.secondary)
-                }
-                .buttonStyle(.plain)
-            }
         }
     }
 

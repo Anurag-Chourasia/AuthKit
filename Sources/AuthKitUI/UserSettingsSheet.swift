@@ -53,6 +53,8 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
             .navigationTitle(localizer.string(\CommonStrings.accountTitle))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(BrandPalette.current.background, for: .navigationBar)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
