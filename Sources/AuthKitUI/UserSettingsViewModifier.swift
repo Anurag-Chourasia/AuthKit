@@ -22,19 +22,4 @@ extension View {
             )
         }
     }
-
-    @ViewBuilder
-    func applyModalSheetStyle(background: Color = BrandPalette.current.background) -> some View {
-        #if os(iOS)
-        if #available(iOS 16.4, *) {
-            self
-                .presentationBackground(background)
-                .presentationDragIndicator(.visible)
-        } else {
-            self
-        }
-        #else
-        self
-        #endif
-    }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIComponentsKit
 import DesignTokensKit
 import LocalizationKit
 

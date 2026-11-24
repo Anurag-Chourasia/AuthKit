@@ -21,7 +21,7 @@ extension UserSettingsSheet {
             },
             onSendOTP: { try await session.sendPasswordResetOTP() },
             onChangePassword: { current, new, otp in
-                await session.changePassword(currentPassword: current, newPassword: new, otpCode: otp)
+                try await session.changePassword(currentPassword: current, newPassword: new, otpCode: otp)
             },
             onUpdatePassword: { await session.updatePassword($0) },
             onSignOut: { Task { await session.signOut(); onDismiss() } },

@@ -147,14 +147,20 @@ public final class SessionManager: ObservableObject {
         try await authService.sendPasswordResetOTP(email: u?.email, phone: u?.phone)
     }
 
-    public func changePassword(currentPassword: String, newPassword: String, otpCode: String) async {
-        await perform {
+    public func changePassword(currentPassword: String, newPassword: String, otpCode: String) async throws {
+        isLoading = true; semanticError = nil; errorMessage = nil; semanticNotice = nil; notice = nil
+        defer { isLoading = false }
+        do {
             try await authService.changePassword(
                 currentPassword: currentPassword, newPassword: newPassword, otpCode: otpCode
             )
             isPasswordRecovery = false
             semanticNotice = .passwordUpdated
             notice = AuthNotice.passwordUpdated.localizationKey
+        } catch {
+            let mapped = Self.classify(error, defaultError: .generic)
+            semanticError = mapped; errorMessage = mapped.localizationKey
+            throw error
         }
     }
 

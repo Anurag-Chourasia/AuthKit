@@ -189,7 +189,7 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(sut.semanticNotice, .passwordUpdated)
         XCTAssertEqual(sut.notice, "auth.notice.password_updated")
 
-        await sut.changePassword(currentPassword: "Old123", newPassword: "NewPassword123", otpCode: "123456")
+        try? await sut.changePassword(currentPassword: "Old123", newPassword: "NewPassword123", otpCode: "123456")
         XCTAssertEqual(sut.semanticNotice, .passwordUpdated)
 
         let failing = SessionManager(authService: AuthService(backend: MockAuthBackend(shouldFail: true)))

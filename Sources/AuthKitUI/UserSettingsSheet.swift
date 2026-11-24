@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthKit
+import UIComponentsKit
 import DesignTokensKit
 import LocalizationKit
 
@@ -77,7 +78,10 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
                 }
             }
             .sheet(isPresented: $showingDeveloperProfile) {
-                if let developerContent { developerContent() }
+                if let developerContent {
+                    developerContent()
+                        .applyModalSheetStyle()
+                }
             }
         }
         .background(\.background)
