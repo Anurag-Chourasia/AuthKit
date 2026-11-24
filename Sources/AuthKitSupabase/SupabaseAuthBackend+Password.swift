@@ -6,7 +6,7 @@ extension SupabaseAuthBackend {
 
     public func sendPasswordResetOTP(email: String?, phone: String?) async throws {
         if let email, !email.isEmpty {
-            try await client.auth.signInWithOTP(email: email, shouldCreateUser: false)
+            try await client.auth.resetPasswordForEmail(email)
         } else if let phone, !phone.isEmpty {
             try await client.auth.signInWithOTP(phone: phone, shouldCreateUser: false)
         }
