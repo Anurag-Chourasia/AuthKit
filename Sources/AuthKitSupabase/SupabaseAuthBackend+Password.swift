@@ -34,4 +34,12 @@ extension SupabaseAuthBackend {
         }
         _ = try await client.auth.update(user: UserAttributes(password: newPassword))
     }
+
+    public func changePassword(currentPassword: String, newPassword: String) async throws {
+        let user = try await currentUser()
+        if let email = user?.email, !email.isEmpty {
+            _ = try await client.auth.signIn(email: email, password: currentPassword)
+        }
+        _ = try await client.auth.update(user: UserAttributes(password: newPassword))
+    }
 }

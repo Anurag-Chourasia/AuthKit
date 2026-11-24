@@ -20,8 +20,14 @@ public actor SupabaseAuthBackend: AuthBackend {
 
     public func currentUser() async throws -> AuthUser? {
         do {
-            let session = try await client.auth.session
-            return Self.makeAuthUser(from: session.user)
+            _ = try await client.auth.session
+            do {
+                let user = try await client.auth.user()
+                return Self.makeAuthUser(from: user)
+            } catch {
+                let session = try await client.auth.session
+                return Self.makeAuthUser(from: session.user)
+            }
         } catch AuthError.sessionMissing {
             return nil
         }
@@ -58,6 +64,10 @@ public actor SupabaseAuthBackend: AuthBackend {
 
     public func requestPasswordReset(email: String, redirectTo: URL) async throws {
         try await client.auth.resetPasswordForEmail(email, redirectTo: redirectTo)
+    }
+
+    public func requestPasswordReset(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
     }
 
     public func updatePassword(_ password: String) async throws {

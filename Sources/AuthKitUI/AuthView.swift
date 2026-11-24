@@ -172,7 +172,7 @@ public struct AuthView: View {
                 }
                 if !session.isPasswordRecovery && initialScreen == .login {
                     if mode == .login {
-                        Button(localizer.string("auth.button.forgot_password")) { changeMode(.forgot) }
+                        Button(localizer.string("auth.title.reset_password")) { changeMode(.forgot) }
                             .accessibilityIdentifier(.authForgotPassword)
                             .disabled(session.isLoading)
                         if !providers.isEmpty {

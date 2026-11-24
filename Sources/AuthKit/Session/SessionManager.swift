@@ -141,10 +141,44 @@ public final class SessionManager: ObservableObject {
         }
     }
 
+    public func requestPasswordReset(email: String? = nil) async throws {
+        let targetEmail: String?
+        if let email, !email.isEmpty {
+            targetEmail = email
+        } else if case .authenticated(let authed) = state {
+            targetEmail = authed.email
+        } else {
+            targetEmail = try await authService.currentUser()?.email
+        }
+        guard let finalEmail = targetEmail, !finalEmail.isEmpty else {
+            throw NSError(domain: "AuthKit", code: -1, userInfo: [NSLocalizedDescriptionKey: "No email available"])
+        }
+        try await authService.requestPasswordReset(email: finalEmail)
+        semanticNotice = .passwordResetSent
+        notice = AuthNotice.passwordResetSent.localizationKey
+    }
+
     public func sendPasswordResetOTP() async throws {
         let u: AuthUser?
         if case .authenticated(let authed) = state { u = authed } else { u = try await authService.currentUser() }
         try await authService.sendPasswordResetOTP(email: u?.email, phone: u?.phone)
+    }
+
+    public func changePassword(currentPassword: String, newPassword: String) async throws {
+        isLoading = true; semanticError = nil; errorMessage = nil; semanticNotice = nil; notice = nil
+        defer { isLoading = false }
+        do {
+            try await authService.changePassword(
+                currentPassword: currentPassword, newPassword: newPassword
+            )
+            isPasswordRecovery = false
+            semanticNotice = .passwordUpdated
+            notice = AuthNotice.passwordUpdated.localizationKey
+        } catch {
+            let mapped = Self.classify(error, defaultError: .generic)
+            semanticError = mapped; errorMessage = mapped.localizationKey
+            throw error
+        }
     }
 
     public func changePassword(currentPassword: String, newPassword: String, otpCode: String) async throws {

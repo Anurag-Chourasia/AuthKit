@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Anurag-Chourasia/DesignTokensKit.git",
       "state" : {
-        "revision" : "69a4b628e3dd584812a00c710cc8343b27c9468e",
-        "version" : "1.24.0"
+        "revision" : "68ec1a92e02a2ea374d544a53ce90656a737c756",
+        "version" : "1.27.0"
       }
     },
     {
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-asn1.git",
       "state" : {
-        "revision" : "917b472dbe53ba699cbb0495f9a95a084bc6364d",
-        "version" : "1.7.4"
+        "revision" : "97fd57437fc94cfa6b62f2b8f84c50f433534e17",
+        "version" : "1.7.5"
       }
     },
     {
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Anurag-Chourasia/UIComponentsKit.git",
       "state" : {
-        "revision" : "b9cf0c56f2881b0379eeb56e53fba1b85e9e3265",
-        "version" : "1.10.0"
+        "revision" : "e3e3f262aaef25c2dcc2b525be9a833cc6c1aa5c",
+        "version" : "1.13.0"
       }
     },
     {
