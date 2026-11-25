@@ -7,7 +7,6 @@ import LocalizationKit
 public struct ChangePasswordSheet: View {
     public let localizer: any AuthLocalizing
     public let destination: String?
-    public let onSendResetLink: (() async throws -> Void)?
     public let onChangePassword: ((String, String) async throws -> Void)?
     public let onUpdatePassword: ((String) async throws -> Void)?
     public let onDismiss: () -> Void
@@ -26,7 +25,6 @@ public struct ChangePasswordSheet: View {
         onDismiss: @escaping () -> Void
     ) {
         self.localizer = localizer ?? DefaultAuthLocalizer(); self.destination = destination
-        self.onSendResetLink = onSendResetLink
         self.onChangePassword = onChangePassword; self.onUpdatePassword = onUpdatePassword
         self.onDismiss = onDismiss
     }
@@ -52,15 +50,18 @@ public struct ChangePasswordSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    AuthSecureInputField(localizer.string(\CommonStrings.authFieldCurrentPassword), text: $currentPassword)
+                    AuthSecureInputField(
+                        localizer.string(\CommonStrings.authFieldCurrentPassword),
+                        text: $currentPassword
+                    )
                 }
                 Section {
                     AuthSecureInputField(localizer.string(\CommonStrings.authFieldNewPassword), text: $newPassword)
-                    AuthSecureInputField(localizer.string(\CommonStrings.authFieldConfirmPassword), text: $confirmPassword)
+                    AuthSecureInputField(
+                        localizer.string(\CommonStrings.authFieldConfirmPassword),
+                        text: $confirmPassword
+                    )
                 } footer: { Text(localizer.string(\CommonStrings.authInstructionPasswordRequirements)) }
-                if let onSendResetLink {
-                    ChangePasswordResetSection(localizer: localizer, onSend: onSendResetLink)
-                }
                 if let errorMessage { Section { Text(errorMessage).foregroundStyle(\.red).font(\.caption) } }
                 Section { submitButton }
             }
@@ -71,21 +72,37 @@ public struct ChangePasswordSheet: View {
             .toolbarBackground(BrandPalette.current.background, for: .navigationBar)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(localizer.string(\CommonStrings.cancel), action: onDismiss) }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(localizer.string(\CommonStrings.cancel), action: onDismiss)
+                }
             }
         }.background(\.background).applyModalSheetStyle()
     }
 
     private var submitButton: some View {
-        Button(action: submitPassword) {
+        Button {
+            submitPassword()
+        } label: {
             HStack {
                 Spacer()
-                if isSubmitting { ProgressView() } else {
-                    Text(localizer.string(\CommonStrings.authButtonUpdatePassword)).fontWeight(.semibold)
+                if isSubmitting {
+                    ProgressView()
+                } else {
+                    Text(localizer.string(\CommonStrings.authButtonUpdatePassword))
+                        .font(.headline).fontWeight(.semibold)
                 }
                 Spacer()
             }
-        }.disabled(isSubmitting || !isValid)
+            .frame(minHeight: \.touchTargetSpacious)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(BrandPalette.current.onAction)
+        .background(BrandPalette.current.action, in: RoundedRectangle(cornerRadius: \.cardRadius))
+        .opacity(!isValid || isSubmitting ? \.p0_4 : \.p1_0)
+        .disabled(!isValid || isSubmitting)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
     }
 
     private var isValid: Bool {
