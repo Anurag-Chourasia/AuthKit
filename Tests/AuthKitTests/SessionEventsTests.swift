@@ -91,5 +91,8 @@ final class SessionEventsTests: XCTestCase {
         }
         await sut.handleCallback(callback)
         guard case .authenticated = sut.state else { return XCTFail("Callback did not sign in") }
+        let recoveryCallback = try XCTUnwrap(URL(string: "test-auth://callback#type=recovery"))
+        await sut.handleCallback(recoveryCallback)
+        XCTAssertTrue(sut.isPasswordRecovery)
     }
 }

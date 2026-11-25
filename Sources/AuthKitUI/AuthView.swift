@@ -97,13 +97,16 @@ public struct AuthView: View {
             .background(palette.authBackground)
             .tint(palette.authAction)
             .environment(\.layoutDirection, localizer.isRightToLeft ? .rightToLeft : .leftToRight)
-            .onAuthValueChange(of: session.isPasswordRecovery) { _ in password = ""; confirmation = "" }
+            .onAuthValueChange(of: session.isPasswordRecovery) { recovering in
+                password = ""; confirmation = ""
+                if recovering { session.clearNotice() }
+            }
             .onDisappear { password = ""; confirmation = "" }
     }
 
     private var submitTitle: String {
         if session.isPasswordRecovery {
-            return localizer.string("auth.title.choose_new_password")
+            return localizer.string("auth.button.update_password")
         }
         if mode == .forgot {
             return localizer.string("auth.title.reset_password")
@@ -118,7 +121,7 @@ public struct AuthView: View {
                 Text(brand.title).font(.largeTitle.bold())
                 Text(brand.localizedSubtitle(using: localizer)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 SurfaceCard {
-                    if mode == .forgot && session.semanticNotice == .passwordResetSent {
+                    if !session.isPasswordRecovery && mode == .forgot && session.semanticNotice == .passwordResetSent {
                         checkEmailContent
                     } else {
                         formFields

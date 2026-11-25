@@ -7,12 +7,15 @@ import LocalizationKit
 public struct ChangePasswordSheet: View {
     public let localizer: any AuthLocalizing
     public let destination: String?
+    public let onSendResetLink: (() async throws -> Void)?
     public let onChangePassword: ((String, String) async throws -> Void)?
     public let onUpdatePassword: ((String) async throws -> Void)?
     public let onDismiss: () -> Void
 
-    @State private var currentPassword = ""; @State private var newPassword = ""
-    @State private var confirmPassword = ""; @State private var isSubmitting = false
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var isSubmitting = false
     @State private var errorMessage: String?
 
     public init(
@@ -23,6 +26,7 @@ public struct ChangePasswordSheet: View {
         onDismiss: @escaping () -> Void
     ) {
         self.localizer = localizer ?? DefaultAuthLocalizer(); self.destination = destination
+        self.onSendResetLink = onSendResetLink
         self.onChangePassword = onChangePassword; self.onUpdatePassword = onUpdatePassword
         self.onDismiss = onDismiss
     }
@@ -47,11 +51,16 @@ public struct ChangePasswordSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section { AuthSecureInputField(localizer.string(\CommonStrings.authFieldCurrentPassword), text: $currentPassword) }
+                Section {
+                    AuthSecureInputField(localizer.string(\CommonStrings.authFieldCurrentPassword), text: $currentPassword)
+                }
                 Section {
                     AuthSecureInputField(localizer.string(\CommonStrings.authFieldNewPassword), text: $newPassword)
                     AuthSecureInputField(localizer.string(\CommonStrings.authFieldConfirmPassword), text: $confirmPassword)
                 } footer: { Text(localizer.string(\CommonStrings.authInstructionPasswordRequirements)) }
+                if let onSendResetLink {
+                    ChangePasswordResetSection(localizer: localizer, onSend: onSendResetLink)
+                }
                 if let errorMessage { Section { Text(errorMessage).foregroundStyle(\.red).font(\.caption) } }
                 Section { submitButton }
             }

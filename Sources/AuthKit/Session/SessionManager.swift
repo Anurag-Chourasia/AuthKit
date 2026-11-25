@@ -33,7 +33,11 @@ public final class SessionManager: ObservableObject {
                 guard !Task.isCancelled, let self else { break }
                 self.revision += 1
                 self.state = event.user.map(AuthState.authenticated) ?? .unauthenticated
-                if event.isPasswordRecovery { self.isPasswordRecovery = true }
+                if event.isPasswordRecovery {
+                    self.isPasswordRecovery = true
+                    self.semanticNotice = nil
+                    self.notice = nil
+                }
                 if event.user == nil { self.isPasswordRecovery = false }
             }
         }
@@ -219,10 +223,20 @@ public final class SessionManager: ObservableObject {
     /// Host must first match the callback against its configured URL scheme/host/path.
     /// Browser OAuth consumes its own callback; forward email confirmation/recovery here.
     public func handleCallback(_ url: URL) async {
+        let isRecovery = url.absoluteString.localizedCaseInsensitiveContains("type=recovery")
+            || url.fragment?.localizedCaseInsensitiveContains("type=recovery") == true
+            || url.query?.localizedCaseInsensitiveContains("type=recovery") == true
         await perform(defaultError: .sessionExpired) {
             let started = revision
             let user = try await authService.handleCallback(url)
-            if revision == started { state = .authenticated(user) }
+            if revision == started {
+                state = .authenticated(user)
+                if isRecovery {
+                    isPasswordRecovery = true
+                    semanticNotice = nil
+                    notice = nil
+                }
+            }
         }
     }
 
