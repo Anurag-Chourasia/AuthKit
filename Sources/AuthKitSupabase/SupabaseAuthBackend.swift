@@ -152,6 +152,9 @@ public actor SupabaseAuthBackend: AuthBackend {
         if case .string(let prov) = user.appMetadata["provider"] {
             provider = prov
         }
+        if provider == nil, let identityProvider = user.identities?.first?.provider {
+            provider = identityProvider
+        }
         return AuthUser(
             id: user.id, email: user.email, firstName: firstName,
             lastName: lastName, phone: phone, provider: provider

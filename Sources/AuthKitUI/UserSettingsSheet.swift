@@ -78,17 +78,15 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
                 }
             }
             .sheet(isPresented: $showingDeveloperProfile) {
-                if let developerContent {
-                    developerContent()
-                        .applyModalSheetStyle()
-                }
+                if let developerContent { developerContent().applyModalSheetStyle() }
             }
         }
-        .background(\.background)
-        .applyModalSheetStyle()
+        .background(\.background).applyModalSheetStyle()
     }
 
-    private var hasPasswordAction: Bool { onChangePassword != nil || onUpdatePassword != nil }
+    private var hasPasswordAction: Bool {
+        (onChangePassword != nil || onUpdatePassword != nil) && user?.isPasswordUser == true
+    }
 
     private var resolvedAboutConfiguration: UserSettingsAboutConfiguration? {
         guard let c = aboutConfiguration, developerContent != nil else { return aboutConfiguration }
