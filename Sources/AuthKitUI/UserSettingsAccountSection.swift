@@ -30,7 +30,7 @@ public struct UserSettingsAccountSection: View {
 
     public var body: some View {
         Section(localizer.string(\CommonStrings.authSectionSecurity)) {
-            if let onChangePassword {
+            if let onChangePassword, user?.isPasswordUser != false {
                 Button(action: onChangePassword) {
                     Label(localizer.string(\CommonStrings.authButtonChangePassword), \.lock)
                 }

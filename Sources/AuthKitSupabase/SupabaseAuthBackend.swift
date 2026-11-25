@@ -148,6 +148,13 @@ public actor SupabaseAuthBackend: AuthBackend {
            case .string(let metaPhone) = meta["phone"] ?? meta["phone_number"] {
             phone = metaPhone
         }
-        return AuthUser(id: user.id, email: user.email, firstName: firstName, lastName: lastName, phone: phone)
+        var provider: String?
+        if case .string(let prov) = user.appMetadata["provider"] {
+            provider = prov
+        }
+        return AuthUser(
+            id: user.id, email: user.email, firstName: firstName,
+            lastName: lastName, phone: phone, provider: provider
+        )
     }
 }
