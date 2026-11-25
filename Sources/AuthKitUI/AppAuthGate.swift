@@ -144,6 +144,17 @@ private struct ConfiguredAuthGate<Content: View>: View {
             guard !session.isLoading else { return }
             Task { await session.handleCallback(url) }
         }
+        .overlay(alignment: .top) {
+            if case .authenticated = session.state, let notice = session.semanticNotice {
+                AuthNoticeBanner(localizer.string(notice.localizationKey)) {
+                    session.clearNotice()
+                }
+                .padding(.horizontal, \.sixteen)
+                .padding(.top, \.eight)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut, value: session.semanticNotice)
     }
     private var authView: some View {
         AuthView(session: session, brand: brand, redirectTo: configuration.callbackURL,

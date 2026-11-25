@@ -118,57 +118,11 @@ public struct AuthView: View {
                 Text(brand.title).font(.largeTitle.bold())
                 Text(brand.localizedSubtitle(using: localizer)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 SurfaceCard {
-                    VStack(alignment: .leading, spacing: \.sixteen) {
-                        Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode.localizedTitle(using: localizer)).font(.title2.bold())
-                        if !session.isPasswordRecovery {
-                            if mode == .forgot {
-                                Text(localizer.string("auth.instruction.reset_email_sent"))
-                                    .font(.subheadline).foregroundStyle(.secondary)
-                            }
-                            TextField(localizer.string("auth.field.email"), text: $email)
-                                .textContentType(.emailAddress)
-                                .autocorrectionDisabled()
-                                #if os(iOS)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
-                                #endif
-                                .accessibilityIdentifier(.authEmail)
-                        }
-                        if session.isPasswordRecovery || mode != .forgot {
-                            SecureField(localizer.string("auth.field.password"), text: $password)
-                                .textContentType(mode == .login && !session.isPasswordRecovery ? .password : .newPassword)
-                                .accessibilityIdentifier(.authPassword)
-                            if mode == .signup || session.isPasswordRecovery {
-                                SecureField(localizer.string("auth.field.confirm_password"), text: $confirmation).textContentType(.newPassword)
-                                    .accessibilityIdentifier(.authConfirmPassword)
-                                Text(localizer.string("auth.instruction.password_requirements"))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
-                            Text(localizer.string(errorKey)).foregroundStyle(.red).accessibilityIdentifier(.authError)
-                        }
-                        if let noticeKey = session.semanticNotice?.localizationKey ?? session.notice {
-                            Text(localizer.string(noticeKey)).accessibilityIdentifier(.authNotice)
-                        }
-                        Button {
-                            Task { await submit() }
-                        } label: {
-                            Text(submitTitle)
-                                .font(.headline)
-                                .frame(minHeight: \.touchTargetSpacious)
-                                .frame(maxWidth: .infinity)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(palette.authOnAction)
-                        .background(palette.authAction, in: RoundedRectangle(cornerRadius: \.cardRadius))
-                        .opacity(!canSubmit || session.isLoading ? \.p0_4 : \.p1_0)
-                        .disabled(!canSubmit || session.isLoading)
-                        .accessibilityIdentifier(.authSubmit)
-                        if session.isLoading { ProgressView(localizer.string("auth.status.please_wait")) }
+                    if mode == .forgot && session.semanticNotice == .passwordResetSent {
+                        checkEmailContent
+                    } else {
+                        formFields
                     }
-                    .textFieldStyle(.roundedBorder)
                 }
                 if !session.isPasswordRecovery && initialScreen == .login {
                     if mode == .login {
@@ -194,17 +148,100 @@ public struct AuthView: View {
                             .padding(.horizontal, \.sixteen)
                         }
                     }
-                    Button(mode == .login ? localizer.string("auth.button.create_an_account") : localizer.string("auth.button.back_to_sign_in")) {
-                        changeMode(mode == .login ? .signup : .login)
+                    if mode != .forgot || session.semanticNotice != .passwordResetSent {
+                        Button(mode == .login ? localizer.string("auth.button.create_an_account") : localizer.string("auth.button.back_to_sign_in")) {
+                            changeMode(mode == .login ? .signup : .login)
+                        }
+                        .disabled(session.isLoading)
+                        .accessibilityIdentifier(.authSwitchMode)
                     }
-                    .disabled(session.isLoading)
-                    .accessibilityIdentifier(.authSwitchMode)
                 }
             }
             .padding(\.twenty)
             .frame(maxWidth: 520)
             .frame(maxWidth: .infinity)
             .tint(palette.authAction)
+    }
+
+    private var checkEmailContent: some View {
+        VStack(spacing: \.sixteen) {
+            Image(\.envelope)
+                .font(.system(size: 44))
+                .foregroundStyle(palette.authAction)
+            Text(localizer.string("auth.notice.password_reset_sent"))
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            Text(localizer.string("auth.instruction.reset_email_sent"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button(localizer.string("auth.button.back_to_sign_in")) {
+                changeMode(.login)
+            }
+            .buttonStyle(.plain)
+            .font(.headline)
+            .frame(minHeight: \.touchTargetSpacious)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .foregroundStyle(palette.authOnAction)
+            .background(palette.authAction, in: RoundedRectangle(cornerRadius: \.cardRadius))
+            .accessibilityIdentifier(.authSwitchMode)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(\.eight)
+    }
+
+    private var formFields: some View {
+        VStack(alignment: .leading, spacing: \.sixteen) {
+            Text(session.isPasswordRecovery ? localizer.string("auth.title.choose_new_password") : mode.localizedTitle(using: localizer)).font(.title2.bold())
+            if !session.isPasswordRecovery {
+                if mode == .forgot {
+                    Text(localizer.string("auth.instruction.reset_email_sent"))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                TextField(localizer.string("auth.field.email"), text: $email)
+                    .textContentType(.emailAddress)
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    #endif
+                    .accessibilityIdentifier(.authEmail)
+            }
+            if session.isPasswordRecovery || mode != .forgot {
+                AuthSecureInputField(localizer.string("auth.field.password"), text: $password)
+                    .accessibilityIdentifier(.authPassword)
+                if mode == .signup || session.isPasswordRecovery {
+                    AuthSecureInputField(localizer.string("auth.field.confirm_password"), text: $confirmation)
+                        .accessibilityIdentifier(.authConfirmPassword)
+                    Text(localizer.string("auth.instruction.password_requirements"))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let errorKey = session.semanticError?.localizationKey ?? session.errorMessage {
+                Text(localizer.string(errorKey)).foregroundStyle(.red).accessibilityIdentifier(.authError)
+            }
+            if let noticeKey = session.semanticNotice?.localizationKey ?? session.notice {
+                Text(localizer.string(noticeKey)).accessibilityIdentifier(.authNotice)
+            }
+            Button {
+                Task { await submit() }
+            } label: {
+                Text(submitTitle)
+                    .font(.headline)
+                    .frame(minHeight: \.touchTargetSpacious)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(palette.authOnAction)
+            .background(palette.authAction, in: RoundedRectangle(cornerRadius: \.cardRadius))
+            .opacity(!canSubmit || session.isLoading ? \.p0_4 : \.p1_0)
+            .disabled(!canSubmit || session.isLoading)
+            .accessibilityIdentifier(.authSubmit)
+            if session.isLoading { ProgressView(localizer.string("auth.status.please_wait")) }
+        }
+        .textFieldStyle(.roundedBorder)
     }
 
     private var canSubmit: Bool {
@@ -217,7 +254,12 @@ public struct AuthView: View {
         case .signup: return password.count >= 8 && password == confirmation
         }
     }
-    private func changeMode(_ value: Mode) { mode = value; password = ""; confirmation = "" }
+    private func changeMode(_ value: Mode) {
+        mode = value
+        password = ""
+        confirmation = ""
+        session.clearFeedback()
+    }
     private func submit() async {
         let secret = password
         password = ""; confirmation = ""

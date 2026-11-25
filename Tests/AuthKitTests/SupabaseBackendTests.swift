@@ -92,7 +92,7 @@ final class SupabaseBackendTests: XCTestCase {
         let manager = SupabaseManager(
             url: testURL,
             publishableKey: testKey,
-            authOptions: .init(flowType: flowType),
+            authOptions: .init(storage: InMemoryAuthStorage(), flowType: flowType),
             globalOptions: .init(session: session)
         )
         return SupabaseAuthBackend(manager: manager)
@@ -182,12 +182,20 @@ final class SupabaseBackendTests: XCTestCase {
     func testPasswordResetAndRecovery() async throws {
         MockSupabaseURLProtocol.requestHandler = { request in
             let path = request.url?.path ?? ""
-            let data = path.contains("recover") ? Data("{}".utf8) : self.userJSON
+            let data: Data
+            if path.contains("token") {
+                data = self.sessionJSON
+            } else if path.contains("recover") {
+                data = Data("{}".utf8)
+            } else {
+                data = self.userJSON
+            }
             let response = self.makeResponse(for: request)
             return (response, data)
         }
 
         let backend = makeBackend()
+        _ = try await backend.signIn(email: "test@example.com", password: "pwd")
         try await backend.requestPasswordReset(email: "test@example.com", redirectTo: callbackURL)
         try await backend.updatePassword("new-secret-password")
     }
@@ -205,6 +213,7 @@ final class SupabaseBackendTests: XCTestCase {
         }
 
         let backend = makeBackend()
+        _ = try await backend.signIn(email: "test@example.com", password: "pwd")
         try await backend.refreshSession()
     }
 

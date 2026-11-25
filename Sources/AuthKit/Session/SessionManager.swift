@@ -225,4 +225,7 @@ public final class SessionManager: ObservableObject {
             if revision == started { state = .authenticated(user) }
         }
     }
+
+    public func clearNotice() { semanticNotice = nil; notice = nil }
+    public func clearFeedback() { semanticError = nil; errorMessage = nil; semanticNotice = nil; notice = nil }
 }
