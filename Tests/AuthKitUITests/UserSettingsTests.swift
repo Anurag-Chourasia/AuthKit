@@ -99,8 +99,9 @@ final class UserSettingsTests: XCTestCase {
             version: "2.1.0",
             build: "100",
             disclaimerTitle: "Important",
-            disclaimerText: "Powered by Open Library",
+            disclaimerText: "Powered by [Open Library](https://openlibrary.org)",
             developerProfileTitle: "Know Developer",
+            githubReadmeURL: URL(string: "https://github.com/Anurag-Chourasia/ShowBook#readme"),
             onOpenDeveloperProfile: { developerProfileOpened = true }
         )
 

@@ -19,6 +19,11 @@ public struct UserSettingsAboutSection: View {
         "\(configuration.appName) \(configuration.version) (\(configuration.build))"
     }
 
+    private func disclaimerAttributedString(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
+    }
+
     public var body: some View {
         Section(configuration.appName) {
             VStack(alignment: .leading, spacing: \.four) {
@@ -34,12 +39,12 @@ public struct UserSettingsAboutSection: View {
             if let disclaimerText = configuration.disclaimerText {
                 VStack(alignment: .leading, spacing: \.four) {
                     if let title = configuration.disclaimerTitle {
-                        Text(LocalizedStringKey(title))
+                        Text(title)
                             .font(\.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(\.secondary)
                     }
-                    Text(LocalizedStringKey(disclaimerText))
+                    Text(disclaimerAttributedString(disclaimerText))
                         .font(\.caption)
                         .foregroundStyle(\.secondary)
                 }
