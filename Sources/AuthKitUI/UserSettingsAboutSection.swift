@@ -34,12 +34,12 @@ public struct UserSettingsAboutSection: View {
             if let disclaimerText = configuration.disclaimerText {
                 VStack(alignment: .leading, spacing: \.four) {
                     if let title = configuration.disclaimerTitle {
-                        Text(title)
+                        Text(LocalizedStringKey(title))
                             .font(\.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(\.secondary)
                     }
-                    Text(disclaimerText)
+                    Text(LocalizedStringKey(disclaimerText))
                         .font(\.caption)
                         .foregroundStyle(\.secondary)
                 }

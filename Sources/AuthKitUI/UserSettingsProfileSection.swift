@@ -87,7 +87,7 @@ public struct UserSettingsProfileSection: View {
         let (l, p) = (lastName.trimmingCharacters(in: .whitespaces), phone.trimmingCharacters(in: .whitespaces))
         onSaveProfile?(
             e != user?.email && !e.isEmpty ? e : nil,
-            f.isEmpty ? nil : f, l.isEmpty ? nil : l, p.isEmpty ? nil : p
+            f, l, p
         )
         hasEdits = false
     }

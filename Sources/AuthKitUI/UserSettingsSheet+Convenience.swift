@@ -14,6 +14,7 @@ extension UserSettingsSheet {
         let currentUser: AuthUser?
         if case .authenticated(let user) = session.state { currentUser = user } else { currentUser = nil }
         self.init(
+            session: session,
             user: currentUser, isLoading: session.isLoading, localizer: localizer,
             aboutConfiguration: aboutConfiguration, currentAppScheme: currentAppScheme,
             onSaveProfile: { email, first, last, phone in
@@ -34,6 +35,7 @@ extension UserSettingsSheet {
 @MainActor
 extension UserSettingsSheet where DeveloperContent == EmptyView {
     public init(
+        session: SessionManager? = nil,
         user: AuthUser?, isLoading: Bool = false, localizer: (any AuthLocalizing)? = nil,
         aboutConfiguration: UserSettingsAboutConfiguration? = nil, currentAppScheme: String? = nil,
         onSaveProfile: ((_ email: String?, _ first: String?, _ last: String?, _ phone: String?) -> Void)? = nil,
@@ -44,6 +46,7 @@ extension UserSettingsSheet where DeveloperContent == EmptyView {
         @ViewBuilder additionalContent: @escaping () -> AdditionalContent = { EmptyView() }
     ) {
         self.init(
+            session: session,
             user: user, isLoading: isLoading, localizer: localizer,
             aboutConfiguration: aboutConfiguration, currentAppScheme: currentAppScheme,
             onSaveProfile: onSaveProfile, onSendOTP: onSendOTP, onChangePassword: onChangePassword,
