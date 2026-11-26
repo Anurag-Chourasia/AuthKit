@@ -8,6 +8,7 @@ public struct UserSettingsAboutConfiguration: Sendable, Equatable {
     public let disclaimerTitle: String?
     public let disclaimerText: String?
     public let developerProfileTitle: String?
+    public let githubReadmeURL: URL?
     public let onOpenDeveloperProfile: (@MainActor @Sendable () -> Void)?
 
     public init(
@@ -17,6 +18,7 @@ public struct UserSettingsAboutConfiguration: Sendable, Equatable {
         disclaimerTitle: String? = nil,
         disclaimerText: String? = nil,
         developerProfileTitle: String? = nil,
+        githubReadmeURL: URL? = nil,
         onOpenDeveloperProfile: (@MainActor @Sendable () -> Void)? = nil
     ) {
         self.appName = appName
@@ -25,6 +27,7 @@ public struct UserSettingsAboutConfiguration: Sendable, Equatable {
         self.disclaimerTitle = disclaimerTitle
         self.disclaimerText = disclaimerText
         self.developerProfileTitle = developerProfileTitle
+        self.githubReadmeURL = githubReadmeURL
         self.onOpenDeveloperProfile = onOpenDeveloperProfile
     }
 
@@ -34,6 +37,7 @@ public struct UserSettingsAboutConfiguration: Sendable, Equatable {
         lhs.build == rhs.build &&
         lhs.disclaimerTitle == rhs.disclaimerTitle &&
         lhs.disclaimerText == rhs.disclaimerText &&
-        lhs.developerProfileTitle == rhs.developerProfileTitle
+        lhs.developerProfileTitle == rhs.developerProfileTitle &&
+        lhs.githubReadmeURL == rhs.githubReadmeURL
     }
 }

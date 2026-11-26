@@ -102,12 +102,14 @@ public actor SupabaseAuthBackend: AuthBackend {
             let updatedUser = try await client.auth.update(user: fallback)
             returnedUser = Self.makeAuthUser(from: updatedUser)
         }
-        if (returnedUser.phone == nil || returnedUser.phone?.isEmpty == true), let phoneToUpdate {
-            returnedUser = AuthUser(
-                id: returnedUser.id, email: returnedUser.email, firstName: returnedUser.firstName,
-                lastName: returnedUser.lastName, phone: phoneToUpdate
-            )
-        }
+        let finalFirst = (firstName?.isEmpty == false) ? firstName : returnedUser.firstName
+        let finalLast = (lastName?.isEmpty == false) ? lastName : returnedUser.lastName
+        let finalPhone = phoneToUpdate ?? returnedUser.phone
+        returnedUser = AuthUser(
+            id: returnedUser.id, email: returnedUser.email, firstName: finalFirst,
+            lastName: finalLast, phone: finalPhone, provider: returnedUser.provider
+        )
+        _ = try? await client.auth.refreshSession()
         return returnedUser
     }
 

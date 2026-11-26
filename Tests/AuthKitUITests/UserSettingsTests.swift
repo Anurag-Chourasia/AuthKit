@@ -33,6 +33,7 @@ private actor MockUserSettingsBackend: AuthBackend {
 @MainActor
 final class UserSettingsTests: XCTestCase {
     func testAboutConfigurationEqualityAndProperties() {
+        let readme = URL(string: "https://github.com/example/repo#readme")!
         var profileOpened = false
         let config1 = UserSettingsAboutConfiguration(
             appName: "MyTV",
@@ -41,6 +42,7 @@ final class UserSettingsTests: XCTestCase {
             disclaimerTitle: "Disclaimer",
             disclaimerText: "Demo app",
             developerProfileTitle: "Developer",
+            githubReadmeURL: readme,
             onOpenDeveloperProfile: { profileOpened = true }
         )
         let config2 = UserSettingsAboutConfiguration(
@@ -50,6 +52,7 @@ final class UserSettingsTests: XCTestCase {
             disclaimerTitle: "Disclaimer",
             disclaimerText: "Demo app",
             developerProfileTitle: "Developer",
+            githubReadmeURL: readme,
             onOpenDeveloperProfile: nil
         )
 
@@ -57,6 +60,7 @@ final class UserSettingsTests: XCTestCase {
         XCTAssertEqual(config1.appName, "MyTV")
         XCTAssertEqual(config1.version, "1.0.0")
         XCTAssertEqual(config1.build, "42")
+        XCTAssertEqual(config1.githubReadmeURL, readme)
         config1.onOpenDeveloperProfile?()
         XCTAssertTrue(profileOpened)
     }

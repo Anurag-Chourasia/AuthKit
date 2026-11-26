@@ -108,6 +108,7 @@ public struct UserSettingsSheet<AdditionalContent: View, DeveloperContent: View>
             appName: c.appName, version: c.version, build: c.build,
             disclaimerTitle: c.disclaimerTitle, disclaimerText: c.disclaimerText,
             developerProfileTitle: c.developerProfileTitle,
+            githubReadmeURL: c.githubReadmeURL,
             onOpenDeveloperProfile: { showingDeveloperProfile = true }
         )
     }

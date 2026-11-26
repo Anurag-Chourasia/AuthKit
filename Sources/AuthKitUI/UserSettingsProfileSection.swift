@@ -14,6 +14,8 @@ public struct UserSettingsProfileSection: View {
     @State private var lastName: String = ""
     @State private var phone: String = ""
     @State private var hasEdits: Bool = false
+    @State private var isSaving: Bool = false
+    @State private var saveSuccess: Bool = false
 
     public init(
         user: AuthUser?, localizer: (any AuthLocalizing)? = nil,
@@ -27,6 +29,21 @@ public struct UserSettingsProfileSection: View {
     public init(user: AuthUser?, localizer: (any AuthLocalizing)? = nil,
                 onSaveProfile: ((_ first: String?, _ last: String?, _ phone: String?) -> Void)?) {
         self.init(user: user, localizer: localizer, onSaveProfile: onSaveProfile.map { cb in { cb($1, $2, $3) } })
+    }
+
+    private var isModified: Bool {
+        let curEmail = email.trimmingCharacters(in: .whitespaces)
+        let curFirst = firstName.trimmingCharacters(in: .whitespaces)
+        let curLast = lastName.trimmingCharacters(in: .whitespaces)
+        let curPhone = phone.trimmingCharacters(in: .whitespaces)
+        return curEmail != (user?.email ?? "").trimmingCharacters(in: .whitespaces) ||
+               curFirst != (user?.firstName ?? "").trimmingCharacters(in: .whitespaces) ||
+               curLast != (user?.lastName ?? "").trimmingCharacters(in: .whitespaces) ||
+               curPhone != (user?.phone ?? "").trimmingCharacters(in: .whitespaces)
+    }
+
+    private var canSave: Bool {
+        (hasEdits || isModified) && onSaveProfile != nil
     }
 
     public var body: some View {
@@ -46,17 +63,30 @@ public struct UserSettingsProfileSection: View {
             textRow(\CommonStrings.authFieldLastName, \.person, $lastName)
             textRow(\CommonStrings.authFieldPhoneOptional, \.phone, $phone, isPhone: true)
 
-            if hasEdits, onSaveProfile != nil {
+            if canSave {
                 Button(action: saveChanges) {
-                    Label(localizer.string(\CommonStrings.authButtonSaveProfile), \.checkmark)
+                    HStack {
+                        if isSaving {
+                            ProgressView().controlSize(.small)
+                        } else if saveSuccess {
+                            Image(\.checkmark).foregroundStyle(\.brandPrimary)
+                        }
+                        Label(localizer.string(\CommonStrings.authButtonSaveProfile), \.checkmark)
+                    }
                 }
+                .disabled(isSaving)
             }
         }
-        .onDisappear { if hasEdits { saveChanges() } }
+        .onDisappear { if hasEdits || isModified { saveChanges() } }
         .onChange(of: user) { u in
             guard let u else { return }
             email = u.email ?? ""; firstName = u.firstName ?? ""; lastName = u.lastName ?? ""; phone = u.phone ?? ""
+            hasEdits = false
         }
+        .onChange(of: email) { _ in hasEdits = true }
+        .onChange(of: firstName) { _ in hasEdits = true }
+        .onChange(of: lastName) { _ in hasEdits = true }
+        .onChange(of: phone) { _ in hasEdits = true }
     }
 
     @ViewBuilder
@@ -73,22 +103,34 @@ public struct UserSettingsProfileSection: View {
                 .textInputAutocapitalization(isEmail ? .never : .words)
                 #endif
                 .autocorrectionDisabled(isEmail || isPhone)
-                .onChange(of: text.wrappedValue) { _ in hasEdits = true }
         }
     }
 
     private var displayName: String {
+        let first = firstName.trimmingCharacters(in: .whitespaces)
+        let last = lastName.trimmingCharacters(in: .whitespaces)
+        let parts = [first, last].filter { !$0.isEmpty }
+        if !parts.isEmpty { return parts.joined(separator: " ") }
         if let name = user?.fullName, !name.isEmpty { return name }
         return email.isEmpty ? (user?.email ?? "") : email
     }
 
     private func saveChanges() {
+        guard !isSaving else { return }
         let (e, f) = (email.trimmingCharacters(in: .whitespaces), firstName.trimmingCharacters(in: .whitespaces))
         let (l, p) = (lastName.trimmingCharacters(in: .whitespaces), phone.trimmingCharacters(in: .whitespaces))
+        isSaving = true
         onSaveProfile?(
             e != user?.email && !e.isEmpty ? e : nil,
             f, l, p
         )
         hasEdits = false
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            isSaving = false
+            saveSuccess = true
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            saveSuccess = false
+        }
     }
 }

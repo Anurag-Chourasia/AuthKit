@@ -46,7 +46,11 @@ public struct UserSettingsAboutSection: View {
                 .padding(.vertical, \.two)
             }
 
-            if let onOpenDeveloperProfile = configuration.onOpenDeveloperProfile {
+            if let readmeURL = configuration.githubReadmeURL {
+                Link(destination: readmeURL) {
+                    Label(configuration.developerProfileTitle ?? configuration.appName, \.infoCircle)
+                }
+            } else if let onOpenDeveloperProfile = configuration.onOpenDeveloperProfile {
                 Button(action: onOpenDeveloperProfile) {
                     Label(configuration.developerProfileTitle ?? configuration.appName, \.infoCircle)
                 }
